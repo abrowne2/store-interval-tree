@@ -23,7 +23,6 @@ use alloc::{boxed::Box, rc::Rc, vec::Vec};
 use core::cmp::Ord;
 use core::fmt::Debug;
 use core::ops::Bound;
-
 mod interval;
 pub use interval::Interval;
 
@@ -83,6 +82,11 @@ pub use iterators::{Entry, EntryMut, IntervalTreeIterator, IntervalTreeIteratorM
 /// let intervals = interval_tree.intervals_between(&low, &high);
 /// ```
 #[derive(Clone, Default, Hash)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
+    archive_attr(derive(bytecheck::CheckBytes))
+)]
 pub struct IntervalTree<T: Ord, V> {
     root: Option<Box<Node<T, V>>>,
 }

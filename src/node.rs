@@ -3,10 +3,14 @@ use core::{
     cmp::{max, Ord},
     ops::Bound::{self, Excluded, Included, Unbounded},
 };
-
 use crate::interval::Interval;
 
 #[derive(Clone, Debug, Hash)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
+    archive_attr(derive(bytecheck::CheckBytes))
+)]
 pub(crate) struct Node<T: Ord, V> {
     pub interval: Option<Interval<T>>,
     pub value: Option<V>,

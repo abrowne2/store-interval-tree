@@ -6,6 +6,11 @@ use crate::{interval::Interval, node::Node};
 /// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
 /// wraps the fields `interval` and `data` in an `Entry`.
 #[derive(PartialEq, Eq, Debug)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
+    archive_attr(derive(bytecheck::CheckBytes))
+)]
 pub struct Entry<'a, T: Ord, V> {
     value: &'a V,
     interval: &'a Interval<T>,
@@ -28,6 +33,11 @@ impl<'a, T: Ord + 'a, V: 'a> Entry<'a, T, V> {
 /// An `IntervalTreeIterator` is returned by `Intervaltree::find` and iterates over the entries
 /// overlapping the query
 #[derive(Debug)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
+    archive_attr(derive(bytecheck::CheckBytes))
+)]
 pub struct IntervalTreeIterator<'v, 'i, T: Ord, V> {
     pub(crate) nodes: Vec<&'v Node<T, V>>,
     pub(crate) interval: &'i Interval<T>,
@@ -69,6 +79,11 @@ impl<'v, 'i, T: Ord + 'i, V: 'v> Iterator for IntervalTreeIterator<'v, 'i, T, V>
 /// wraps the fields `interval` and `data` in an `EntryMut`. Only the data part can be mutably accessed
 /// using the `data` method
 #[derive(PartialEq, Eq, Debug)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
+    archive_attr(derive(bytecheck::CheckBytes))
+)]
 pub struct EntryMut<'a, T: Ord, V> {
     value: &'a mut V,
     interval: &'a Interval<T>,
@@ -90,6 +105,11 @@ impl<'a, T: Ord + 'a, V: 'a> EntryMut<'a, T, V> {
 /// An `IntervalTreeIteratorMut` is returned by `Intervaltree::find_mut` and iterates over the entries
 /// overlapping the query allowing mutable access to the data `D`, not the `Interval`.
 #[derive(Debug)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
+    archive_attr(derive(bytecheck::CheckBytes))
+)]
 pub struct IntervalTreeIteratorMut<'v, 'i, T: Ord, V> {
     pub(crate) nodes: Vec<&'v mut Node<T, V>>,
     pub(crate) interval: &'i Interval<T>,
