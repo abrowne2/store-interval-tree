@@ -43,6 +43,11 @@ use num::Num;
 /// assert!(Interval::get_overlap(&interval1, &interval2).unwrap() == interval2);
 /// ```
 #[derive(Clone, Debug, Hash)]
+#[cfg_attr(
+    feature = "rkyv",
+    derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
+    archive_attr(derive(bytecheck::CheckBytes))
+)]
 pub struct Interval<T: Ord> {
     low: Rc<Bound<T>>,
     high: Rc<Bound<T>>,
