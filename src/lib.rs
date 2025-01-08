@@ -30,7 +30,7 @@ mod node;
 use node::Node;
 
 mod iterators;
-pub use iterators::{Entry, EntryMut, IntervalTreeIterator, IntervalTreeIteratorMut};
+pub use iterators::{Entry, EntryMut, IntervalTreeIterator, IntervalTreeIteratorMut, IntervalTreeIteratorWithPredicate};
 
 /// An interval tree is a tree data structure to hold intervals.
 /// Specifically, it allows one to efficiently find all intervals that overlap with any given interval or point.
@@ -176,6 +176,38 @@ impl<T: Ord, V> IntervalTree<T, V> {
         }
     }
 
+    /// Find overlapping intervals in the tree that satisfy a predicate and returns an
+    /// `IntervalTreeIterator` that allows access to the stored value
+    ///
+    /// # Arguments
+    /// * `interval`: interval to be searched for any overlaps
+    /// * `predicate`: function that takes a reference to value V and returns bool
+    pub fn query_with_predicate<'a, 'v, 'i, P>(
+        &'a self,
+        interval: &'i Interval<T>,
+        predicate: P,
+    ) -> IntervalTreeIteratorWithPredicate<'v, 'i, T, V, P>
+    where
+        'a: 'v,
+        'a: 'i,
+        P: Fn(&V) -> bool,
+    {
+        if let Some(ref n) = self.root {
+            IntervalTreeIteratorWithPredicate {
+                nodes: vec![n],
+                interval,
+                predicate,
+            }
+        } else {
+            let nodes = vec![];
+            IntervalTreeIteratorWithPredicate {
+                nodes,
+                interval,
+                predicate,
+            }
+        }
+    }
+
     /// Find overlapping intervals in the tree and returns an
     /// `IntervalTreeIteratorMut` that allows mutable access to the stored value
     ///
@@ -290,6 +322,100 @@ impl<T: Ord, V> IntervalTree<T, V> {
     #[must_use]
     pub fn find_overlap(&self, interval: &Interval<T>) -> Option<Interval<T>> {
         IntervalTree::_find_overlap(&self.root, interval)
+    }
+
+    /// Find all intervals that overlap and satisfy the predicate
+    pub fn find_overlaps_with_predicate<P>(
+        &self,
+        interval: &Interval<T>,
+        predicate: P,
+    ) -> Vec<Interval<T>>
+    where
+        P: Fn(&V) -> bool,
+    {
+        let mut overlaps = Vec::<Interval<T>>::new();
+        Self::_find_overlaps_with_predicate(&self.root, interval, &predicate, &mut overlaps);
+        overlaps
+    }
+
+    /// Returns first interval that overlaps and satisfies the predicate
+    ///
+    /// # Arguments:
+    /// * `interval`: interval to be searched for any overlaps
+    /// * `predicate`: function that takes a reference to value V and returns bool
+    pub fn find_overlap_with_predicate<P>(
+        &self,
+        interval: &Interval<T>,
+        predicate: P,
+    ) -> Option<Interval<T>>
+    where
+        P: Fn(&V) -> bool,
+    {
+        Self::_find_overlap_with_predicate(&self.root, interval, &predicate)
+    }
+
+    fn _find_overlap_with_predicate<P>(
+        node: &Option<Box<Node<T, V>>>,
+        interval: &Interval<T>,
+        predicate: &P,
+    ) -> Option<Interval<T>>
+    where
+        P: Fn(&V) -> bool,
+    {
+        if node.is_none() {
+            return None;
+        }
+        let mut current = node;
+        while current.is_some() {
+            let node_ref = current.as_ref().unwrap();
+            if Interval::overlaps(node_ref.interval(), interval) && predicate(node_ref.value()) {
+                break;
+            }
+
+            if node_ref.left_child.is_some()
+                && Node::<T, V>::is_ge(
+                    &node_ref.left_child.as_ref().unwrap().get_max(),
+                    &interval.get_low(),
+                )
+            {
+                current = &node_ref.left_child;
+            } else {
+                current = &node_ref.right_child;
+            }
+        }
+
+        if current.is_none() {
+            None
+        } else {
+            Some(current.as_ref().unwrap().interval().duplicate())
+        }
+    }
+
+    fn _find_overlaps_with_predicate<P>(
+        node: &Option<Box<Node<T, V>>>,
+        interval: &Interval<T>,
+        predicate: &P,
+        overlaps: &mut Vec<Interval<T>>,
+    ) where
+        P: Fn(&V) -> bool,
+    {
+        if node.is_none() {
+            return;
+        }
+        let node_ref = node.as_ref().unwrap();
+        if Interval::overlaps(node_ref.interval(), interval) && predicate(node_ref.value()) {
+            overlaps.push(node_ref.interval().duplicate());
+        }
+
+        if node_ref.left_child.is_some()
+            && Node::<T, V>::is_ge(
+                &node_ref.left_child.as_ref().unwrap().get_max(),
+                &interval.get_low(),
+            )
+        {
+            Self::_find_overlaps_with_predicate(&node_ref.left_child, interval, predicate, overlaps);
+        }
+        Self::_find_overlaps_with_predicate(&node_ref.right_child, interval, predicate, overlaps);
     }
 
     fn _find_overlap(
