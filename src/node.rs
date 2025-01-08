@@ -1,4 +1,6 @@
 use alloc::{boxed::Box, rc::Rc};
+use alloc::string::String;
+use alloc::collections::BTreeSet;
 use core::{
     cmp::{max, Ord},
     ops::Bound::{self, Excluded, Included, Unbounded},
@@ -14,9 +16,12 @@ use crate::interval::Interval;
 pub(crate) struct Node<T: Ord, V> {
     pub interval: Option<Interval<T>>,
     pub value: Option<V>,
+    pub identifier: Option<String>,
     pub max: Option<Rc<Bound<T>>>,
     pub height: usize,
     pub size: usize,
+    // Set of all identifiers in this subtree (another compared value).
+    pub subtree_identifiers: BTreeSet<String>,
     pub left_child: Option<Box<Node<T, V>>>,
     pub right_child: Option<Box<Node<T, V>>>,
 }
@@ -26,15 +31,21 @@ impl<T: Ord, V> Node<T, V> {
         interval: Interval<T>,
         value: V,
         max: Rc<Bound<T>>,
+        identifier: String,
         height: usize,
         size: usize,
     ) -> Node<T, V> {
+        let mut subtree_identifiers = BTreeSet::new();
+        subtree_identifiers.insert(identifier.clone());
+
         Node {
             interval: Some(interval),
             value: Some(value),
+            identifier: Some(identifier),
             max: Some(max),
             height,
             size,
+            subtree_identifiers,
             left_child: None,
             right_child: None,
         }
@@ -42,6 +53,27 @@ impl<T: Ord, V> Node<T, V> {
 
     pub fn value(&self) -> &V {
         self.value.as_ref().unwrap()
+    }
+
+    pub fn update_identifiers(&mut self) {
+        let mut identifiers = BTreeSet::new();
+        
+        // Add current node's identifier
+        if let Some(ref id) = self.identifier {
+            identifiers.insert(id.clone());
+        }
+
+        // Add identifiers from left child
+        if let Some(ref left) = self.left_child {
+            identifiers.extend(left.subtree_identifiers.iter().cloned());
+        }
+        
+        // Add identifiers from right child
+        if let Some(ref right) = self.right_child {
+            identifiers.extend(right.subtree_identifiers.iter().cloned());
+        }
+
+        self.subtree_identifiers = identifiers;
     }
 
     // fn value_mut(&mut self) -> &mut V {
@@ -58,6 +90,10 @@ impl<T: Ord, V> Node<T, V> {
 
     pub fn get_interval(&mut self) -> Interval<T> {
         self.interval.take().unwrap()
+    }
+
+    pub fn get_identifier(&mut self) -> String {
+        self.identifier.take().unwrap()
     }
 
     pub fn get_max(&self) -> Rc<Bound<T>> {
