@@ -419,6 +419,8 @@ impl<T: Ord, V> IntervalTree<T, V> {
             }
 
             // Choose subtree to explore
+            // If the left child is not empty and the max of the left child is greater than or equal to the low of the interval,
+            // Only go left if that subtree contains our identifier
             if node_ref.left_child.is_some()
                 && Node::<T, V>::is_ge(
                     &node_ref.left_child.as_ref().unwrap().get_max(),

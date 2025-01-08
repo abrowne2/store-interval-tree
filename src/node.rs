@@ -55,6 +55,15 @@ impl<T: Ord, V> Node<T, V> {
         self.value.as_ref().unwrap()
     }
 
+    /// Updates the set of identifiers in this node's subtree by combining:
+    /// 1. This node's identifier
+    /// 2. All identifiers from the left subtree
+    /// 3. All identifiers from the right subtree
+    ///
+    /// This maintains the invariant that each node's subtree_identifiers contains
+    /// all identifiers in its subtree, which enables efficient overlap queries by
+    /// checking if any intervals with matching identifiers overlap the query interval.
+    /// The identifiers are stored in a balanced BTreeSet for O(log n) operations.
     pub fn update_identifiers(&mut self) {
         let mut identifiers = BTreeSet::new();
         
