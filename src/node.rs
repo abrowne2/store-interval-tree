@@ -1,6 +1,5 @@
-use alloc::{boxed::Box, rc::Rc};
-use alloc::string::String;
-use alloc::collections::BTreeSet;
+use std::{rc::Rc, boxed::Box};
+use std::collections::BTreeSet;
 use core::{
     cmp::{max, Ord},
     ops::Bound::{self, Excluded, Included, Unbounded},
@@ -15,25 +14,29 @@ use crate::interval::Interval;
 )]
 pub(crate) struct Node<T: Ord, V> {
     pub interval: Option<Interval<T>>,
-    pub value: Option<V>,
+    pub value: Option<Rc<V>>,
     pub identifier: Option<String>,
     pub max: Option<Rc<Bound<T>>>,
     pub height: usize,
     pub size: usize,
+    
     // Set of all identifiers in this subtree (another compared value).
     pub subtree_identifiers: BTreeSet<String>,
     pub left_child: Option<Box<Node<T, V>>>,
     pub right_child: Option<Box<Node<T, V>>>,
+    // Used to constant time access to the value in the node
+    pub value_key: String,
 }
 
 impl<T: Ord, V> Node<T, V> {
     pub fn init(
         interval: Interval<T>,
-        value: V,
+        value: Rc<V>,
         max: Rc<Bound<T>>,
         identifier: String,
         height: usize,
         size: usize,
+        value_key: String,
     ) -> Node<T, V> {
         let mut subtree_identifiers = BTreeSet::new();
         subtree_identifiers.insert(identifier.clone());
@@ -48,11 +51,16 @@ impl<T: Ord, V> Node<T, V> {
             subtree_identifiers,
             left_child: None,
             right_child: None,
+            value_key,
         }
     }
 
-    pub fn value(&self) -> &V {
+    pub fn value(&self) -> &Rc<V> {
         self.value.as_ref().unwrap()
+    }
+
+    pub fn value_mut(&mut self) -> &mut Rc<V> {
+        self.value.as_mut().unwrap()
     }
 
     /// Updates the set of identifiers in this node's subtree by combining:
@@ -89,8 +97,12 @@ impl<T: Ord, V> Node<T, V> {
     //    self.value.as_mut().unwrap()
     //}
 
-    pub fn get_value(&mut self) -> V {
+    pub fn get_value(&mut self) -> Rc<V> {
         self.value.take().unwrap()
+    }
+
+    pub fn value_key(&self) -> &String {
+        &self.value_key
     }
 
     pub fn interval(&self) -> &Interval<T> {

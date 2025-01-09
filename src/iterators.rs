@@ -1,4 +1,4 @@
-use alloc::vec::Vec;
+use std::{rc::Rc, vec::Vec};
 use core::{cmp::Ord, fmt::Debug};
 
 use crate::{interval::Interval, node::Node};
@@ -30,7 +30,7 @@ impl<'a, T: Ord + 'a, V: 'a> Entry<'a, T, V> {
     }
 }
 
-/// An `IntervalTreeIterator` is returned by `Intervaltree::find` and iterates over the entries
+/// An `IntervalTreeMapIterator` is returned by `Intervaltree::find` and iterates over the entries
 /// overlapping the query
 #[derive(Debug)]
 #[cfg_attr(
@@ -38,12 +38,12 @@ impl<'a, T: Ord + 'a, V: 'a> Entry<'a, T, V> {
     derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
     archive_attr(derive(bytecheck::CheckBytes))
 )]
-pub struct IntervalTreeIterator<'v, 'i, T: Ord, V> {
+pub struct IntervalTreeMapIterator<'v, 'i, T: Ord, V> {
     pub(crate) nodes: Vec<&'v Node<T, V>>,
     pub(crate) interval: &'i Interval<T>,
 }
 
-impl<'v, 'i, T: Ord + 'i, V: 'v> Iterator for IntervalTreeIterator<'v, 'i, T, V> {
+impl<'v, 'i, T: Ord + 'i, V: 'v> Iterator for IntervalTreeMapIterator<'v, 'i, T, V> {
     type Item = Entry<'v, T, V>;
 
     fn next(&mut self) -> Option<Entry<'v, T, V>> {
@@ -102,7 +102,7 @@ impl<'a, T: Ord + 'a, V: 'a> EntryMut<'a, T, V> {
     }
 }
 
-/// An `IntervalTreeIteratorMut` is returned by `Intervaltree::find_mut` and iterates over the entries
+/// An `IntervalTreeMapIteratorMut` is returned by `Intervaltree::find_mut` and iterates over the entries
 /// overlapping the query allowing mutable access to the data `D`, not the `Interval`.
 #[derive(Debug)]
 #[cfg_attr(
@@ -110,12 +110,12 @@ impl<'a, T: Ord + 'a, V: 'a> EntryMut<'a, T, V> {
     derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
     archive_attr(derive(bytecheck::CheckBytes))
 )]
-pub struct IntervalTreeIteratorMut<'v, 'i, T: Ord, V> {
+pub struct IntervalTreeMapIteratorMut<'v, 'i, T: Ord, V> {
     pub(crate) nodes: Vec<&'v mut Node<T, V>>,
     pub(crate) interval: &'i Interval<T>,
 }
 
-impl<'v, 'i, T: Ord + 'i, V: 'v> Iterator for IntervalTreeIteratorMut<'v, 'i, T, V> {
+impl<'v, 'i, T: Ord + 'i, V: 'v> Iterator for IntervalTreeMapIteratorMut<'v, 'i, T, V> {
     type Item = EntryMut<'v, T, V>;
 
     fn next(&mut self) -> Option<EntryMut<'v, T, V>> {
@@ -141,7 +141,7 @@ impl<'v, 'i, T: Ord + 'i, V: 'v> Iterator for IntervalTreeIteratorMut<'v, 'i, T,
 
             if overlaps {
                 return Some(EntryMut {
-                    value: node_ref.value.as_mut().unwrap(),
+                    value: Rc::get_mut(node_ref.value.as_mut().unwrap()).unwrap(),
                     interval: node_ref.interval.as_ref().unwrap(),
                 });
             }

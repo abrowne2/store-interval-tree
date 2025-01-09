@@ -7,11 +7,11 @@ Based on [rudac](https://crates.io/crates/rudac) and [bio](https://crates.io/cra
 ## Example
 
 ```rust
-use store_interval_tree::IntervalTree;
+use store_interval_tree::IntervalTreeMap;
 use store_interval_tree::Interval;
 use std::ops::Bound::*;
 
-let mut interval_tree = IntervalTree::<usize, bool>::new();
+let mut interval_tree = IntervalTreeMap::<usize, bool>::new();
 
 interval_tree.insert(Interval::new(Excluded(0), Included(1)), true);
 interval_tree.insert(Interval::new(Included(0), Excluded(3)), true);
