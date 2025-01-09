@@ -388,20 +388,20 @@ impl<T: Ord, V> IntervalTree<T, V> {
         IntervalTree::_find_overlaps(&node_ref.right_child, interval, overlaps);
     }
 
-    /// Find first interval that overlaps and matches the identifier
+    /// Find first interval that overlaps and matches the identifier, along with its associated value
     pub fn find_overlap_with_identifier(
         &self,
         interval: &Interval<T>,
         identifier: &str,
-    ) -> Option<Interval<T>> {
+    ) -> Option<(Interval<T>, &V)> {
         Self::_find_overlap_with_identifier(&self.root, interval, identifier)
     }
 
-    fn _find_overlap_with_identifier(
-        node: &Option<Box<Node<T, V>>>,
+    fn _find_overlap_with_identifier<'a>(
+        node: &'a Option<Box<Node<T, V>>>,
         interval: &Interval<T>,
         identifier: &str,
-    ) -> Option<Interval<T>> {
+    ) -> Option<(Interval<T>, &'a V)> {
         if node.is_none() {
             return None;
         }
@@ -415,7 +415,7 @@ impl<T: Ord, V> IntervalTree<T, V> {
 
             if Interval::overlaps(node_ref.interval(), interval) 
                && node_ref.identifier.as_ref().unwrap() == identifier {
-                return Some(node_ref.interval().duplicate());
+                return Some((node_ref.interval().duplicate(), node_ref.value()));
             }
 
             // Choose subtree to explore
@@ -619,6 +619,8 @@ impl<T: Ord, V> IntervalTree<T, V> {
                 node.update_height();
                 node.update_size();
                 node.update_max();
+                node.update_identifiers();
+
                 Some(IntervalTree::balance(node))
             }
         }
@@ -1511,23 +1513,23 @@ mod tests {
         // Should find id3 interval [16,21) which overlaps with test interval
         let overlap = interval_tree.find_overlap_with_identifier(&test_interval, "id3");
         assert!(overlap.is_some());
-        assert_eq!(format!("{}", overlap.unwrap()), "[16,21)");
+        assert_eq!(format!("{}", overlap.unwrap().0), "[16,21)");
 
         // Should find first overlapping interval with id3
         let test_interval_2 = Interval::new(Included(15), Included(22));
         let overlap_2 = interval_tree.find_overlap_with_identifier(&test_interval_2, "id3");
         assert!(overlap_2.is_some());
-        assert_eq!(format!("{}", overlap_2.unwrap()), "[16,21)");
+        assert_eq!(format!("{}", overlap_2.unwrap().0), "[16,21)");
 
         // Should find id4 interval [17,19) which overlaps with test interval
         let overlap_id4 = interval_tree.find_overlap_with_identifier(&test_interval, "id4");
-        assert_eq!(format!("{}", overlap_id4.unwrap()), "[17,19)");
+        assert_eq!(format!("{}", overlap_id4.unwrap().0), "[17,19)");
 
         // Test overlaps with intervals sharing same identifier
         let test_interval_3 = Interval::new(Included(0), Included(2));
         let overlap_3 = interval_tree.find_overlap_with_identifier(&test_interval_3, "id1");
         assert!(overlap_3.is_some());
-        assert_eq!(format!("{}", overlap_3.unwrap()), "(0,1]");
+        assert_eq!(format!("{}", overlap_3.unwrap().0), "(0,1]");
 
         // Should not find non-existent identifier even though interval would overlap
         let wrong_id = interval_tree.find_overlap_with_identifier(&test_interval, "wrong_id");
