@@ -2124,7 +2124,15 @@ mod tests {
             *entry.value() = false;
         }
 
-        let iter = interval_tree.query(&interval);
+        // Serialize to bytes
+        let bytes = rkyv::to_bytes::<_, 256>(&interval_tree).unwrap();
+
+        // Deserialize
+        let archived = unsafe { rkyv::archived_root::<IntervalTreeMap<usize, bool>>(&bytes) };
+        let deserialized: IntervalTreeMap<usize, bool> = archived.deserialize(&mut rkyv::Infallible).unwrap();
+
+        // Verify deserialized data
+        let iter = deserialized.query(&interval);
         for entry in iter {
             assert!(!*entry.value());
         }

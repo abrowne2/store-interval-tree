@@ -11,6 +11,10 @@ license = "MIT OR Apache-2.0"
 keywords = ["tree", "data-structure", "algorithm"]
 categories = ["data-structures", "algorithms" ]
 
+[features]
+default = []
+rkyv = ["bytecheck"]
+
 [dependencies]
 num = { version = "0.4", default_features = false }
 rkyv = { git = "https://github.com/praveenperera/rkyv", branch = "0.7", features = [
