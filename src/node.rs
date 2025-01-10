@@ -10,6 +10,7 @@ use crate::interval::Interval;
 #[cfg_attr(
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
+    rkyv(omit_bounds),
     archive_attr(derive(bytecheck::CheckBytes))
 )]
 pub(crate) struct Node<T: Ord, V> {
