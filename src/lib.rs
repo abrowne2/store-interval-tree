@@ -29,6 +29,7 @@ use node::Node;
 
 mod iterators;
 pub use iterators::{Entry, EntryMut, IntervalTreeMapIterator, IntervalTreeMapIteratorMut};
+use serde::{Deserialize, Serialize};
 
 /// An interval tree map is a tree data structure to hold intervals.
 /// It also allows for storing associated values with each interval.
@@ -81,18 +82,18 @@ pub use iterators::{Entry, EntryMut, IntervalTreeMapIterator, IntervalTreeMapIte
 /// // intervals are: (15,23), [16,21), [17,19), (19,20]
 /// let intervals = interval_tree.intervals_between(&low, &high);
 /// ```
-#[derive(Clone, Default)]
+#[derive(Clone, Default, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
     archive_attr(derive(bytecheck::CheckBytes))
 )]
-pub struct IntervalTreeMap<T: Ord, V> {
+pub struct IntervalTreeMap<T: Ord, V: Serialize + Deserialize + 'a> {
     root: Option<Box<Node<T, V>>>,
     identifier_map: HashMap<String, Rc<V>>, // Raw pointer to value stored in Node
 }
 
-impl<T: Ord, V> IntervalTreeMap<T, V> {
+impl<T: Ord, V: Serialize + Deserialize + 'a> IntervalTreeMap<T, V> {
     /// Initialize an interval tree with end points of type usize
     ///
     /// # Examples

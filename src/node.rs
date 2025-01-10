@@ -4,9 +4,11 @@ use core::{
     cmp::{max, Ord},
     ops::Bound::{self, Excluded, Included, Unbounded},
 };
+use serde::{Deserialize, Serialize};
+
 use crate::interval::Interval;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
 #[cfg_attr(feature = "rkyv", rkyv(omit_bounds))]
 #[cfg_attr(feature = "rkyv", archive_attr(derive(bytecheck::CheckBytes)))]

@@ -4,6 +4,7 @@ use core::{
     ops::Bound::{self, Excluded, Included, Unbounded},
 };
 use num::Num;
+use serde::{Deserialize, Serialize};
 
 /// A utility data structure to represent intervals.
 /// It supports open, close and unbounded intervals
@@ -39,7 +40,7 @@ use num::Num;
 /// // get overlapped interval between two intervals
 /// assert!(Interval::get_overlap(&interval1, &interval2).unwrap() == interval2);
 /// ```
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 #[cfg_attr(
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
