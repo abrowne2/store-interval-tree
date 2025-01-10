@@ -295,8 +295,8 @@ impl<T: Ord, V> IntervalTreeMap<T, V> {
         IntervalTreeMap::_find_overlap(&self.root, interval)
     }
 
-    pub fn get_node_value_by_key(&self, key: &str) -> Option<&Rc<V>> {
-        self.identifier_map.get(key)
+    pub fn get_node_value_by_key_mut(&mut self, key: &str) -> Option<&mut Rc<V>> {
+        self.identifier_map.get_mut(key)
     }
 
     fn _find_overlap(
