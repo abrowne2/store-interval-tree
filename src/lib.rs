@@ -29,7 +29,7 @@ use node::Node;
 
 mod iterators;
 pub use iterators::{Entry, EntryMut, IntervalTreeMapIterator, IntervalTreeMapIteratorMut};
-use serde::{Deserialize, Serialize};
+use serde::{de, Deserialize, Serialize};
 
 /// An interval tree map is a tree data structure to hold intervals.
 /// It also allows for storing associated values with each interval.
@@ -82,18 +82,18 @@ use serde::{Deserialize, Serialize};
 /// // intervals are: (15,23), [16,21), [17,19), (19,20]
 /// let intervals = interval_tree.intervals_between(&low, &high);
 /// ```
-#[derive(Clone, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Default, PartialEq, Deserialize, Serialize)]
 #[cfg_attr(
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
     archive_attr(derive(bytecheck::CheckBytes))
 )]
-pub struct IntervalTreeMap<T: Ord, V: Serialize + Deserialize + 'a> {
+pub struct IntervalTreeMap<T: Ord, V> {
     root: Option<Box<Node<T, V>>>,
     identifier_map: HashMap<String, Rc<V>>, // Raw pointer to value stored in Node
 }
 
-impl<T: Ord, V: Serialize + Deserialize + 'a> IntervalTreeMap<T, V> {
+impl<T: Ord, V: Serialize + for<'b> Deserialize<'b>> IntervalTreeMap<T, V> {
     /// Initialize an interval tree with end points of type usize
     ///
     /// # Examples
@@ -1025,7 +1025,7 @@ impl<T: Ord, V: Serialize + Deserialize + 'a> IntervalTreeMap<T, V> {
     }
 }
 
-impl<T: Debug + Ord, V: Debug> Debug for IntervalTreeMap<T, V> {
+impl<'a, T: Debug + Ord, V: Debug + Serialize + for<'b> Deserialize<'b>> Debug for IntervalTreeMap<T, V> {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
         fmt.write_str("IntervalTreeMap ")?;
         fmt.debug_set().entries(self.intervals().iter()).finish()
