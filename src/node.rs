@@ -6,7 +6,7 @@ use core::{
 };
 use crate::interval::Interval;
 
-#[derive(Clone, Debug, Hash)]
+#[derive(Clone, Debug)]
 #[cfg_attr(
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),

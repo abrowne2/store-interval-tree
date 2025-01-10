@@ -39,7 +39,7 @@ use num::Num;
 /// // get overlapped interval between two intervals
 /// assert!(Interval::get_overlap(&interval1, &interval2).unwrap() == interval2);
 /// ```
-#[derive(Clone, Debug, Hash)]
+#[derive(Clone, Debug)]
 #[cfg_attr(
     feature = "rkyv",
     derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
