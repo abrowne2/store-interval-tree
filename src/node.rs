@@ -2,20 +2,19 @@ use std::{rc::Rc, boxed::Box};
 use std::collections::BTreeSet;
 use core::{
     cmp::{max, Ord},
-    ops::Bound::{self, Excluded, Included, Unbounded},
 };
+use crate::range::Bound::{self, Excluded, Included, Unbounded};
 use rkyv::*;
+use bytecheck::*;
 use crate::interval::Interval;
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 #[archive(check_bytes)]
-#[archive(bound(
-    serialize = "__S: rkyv::ser::ScratchSpace + rkyv::ser::Serializer + \
-                 rkyv::ser::SharedSerializeRegistry",
-    deserialize = "__D: rkyv::de::SharedDeserializeRegistry"
-))]
-pub(crate) struct Node<T: Ord, V> {
+#[archive(bound(serialize = "__S: rkyv::ser::Serializer"))]
+#[archive(bound(deserialize = "T: rkyv::Archive, V: rkyv::Archive, <T as rkyv::Archive>::Archived: rkyv::Deserialize<T, __D>, <V as rkyv::Archive>::Archived: rkyv::Deserialize<V, __D>, __D: rkyv::de::SharedDeserializeRegistry"))]
+pub(crate) struct Node<T: Ord + rkyv::Archive, V: rkyv::Archive> {
+
     pub interval: Option<Interval<T>>,
     pub value: Option<Rc<V>>,
     pub identifier: Option<String>,
@@ -33,7 +32,7 @@ pub(crate) struct Node<T: Ord, V> {
     pub value_key: String,
 }
 
-impl<T: Ord, V> Node<T, V> {
+impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
     pub fn init(
         interval: Interval<T>,
         value: Rc<V>,

@@ -6,11 +6,8 @@ use crate::{interval::Interval, node::Node};
 /// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
 /// wraps the fields `interval` and `data` in an `Entry`.
 #[derive(PartialEq, Eq, Debug)]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
-    archive_attr(derive(bytecheck::CheckBytes))
-)]
+#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[archive(check_bytes)]
 pub struct Entry<'a, T: Ord, V> {
     value: &'a V,
     interval: &'a Interval<T>,
@@ -33,17 +30,14 @@ impl<'a, T: Ord + 'a, V: 'a> Entry<'a, T, V> {
 /// An `IntervalTreeMapIterator` is returned by `Intervaltree::find` and iterates over the entries
 /// overlapping the query
 #[derive(Debug)]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
-    archive_attr(derive(bytecheck::CheckBytes))
-)]
-pub struct IntervalTreeMapIterator<'v, 'i, T: Ord, V> {
+#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[archive(check_bytes)]
+pub struct IntervalTreeMapIterator<'v, 'i, T: Ord + rkyv::Archive, V: rkyv::Archive> {
     pub(crate) nodes: Vec<&'v Node<T, V>>,
     pub(crate) interval: &'i Interval<T>,
 }
 
-impl<'v, 'i, T: Ord + 'i, V: 'v> Iterator for IntervalTreeMapIterator<'v, 'i, T, V> {
+impl<'v, 'i, T: Ord + rkyv::Archive, V: rkyv::Archive> Iterator for IntervalTreeMapIterator<'v, 'i, T, V> {
     type Item = Entry<'v, T, V>;
 
     fn next(&mut self) -> Option<Entry<'v, T, V>> {
@@ -79,11 +73,8 @@ impl<'v, 'i, T: Ord + 'i, V: 'v> Iterator for IntervalTreeMapIterator<'v, 'i, T,
 /// wraps the fields `interval` and `data` in an `EntryMut`. Only the data part can be mutably accessed
 /// using the `data` method
 #[derive(PartialEq, Eq, Debug)]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
-    archive_attr(derive(bytecheck::CheckBytes))
-)]
+#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[archive(check_bytes)]
 pub struct EntryMut<'a, T: Ord, V> {
     value: &'a mut V,
     interval: &'a Interval<T>,
@@ -105,17 +96,14 @@ impl<'a, T: Ord + 'a, V: 'a> EntryMut<'a, T, V> {
 /// An `IntervalTreeMapIteratorMut` is returned by `Intervaltree::find_mut` and iterates over the entries
 /// overlapping the query allowing mutable access to the data `D`, not the `Interval`.
 #[derive(Debug)]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
-    archive_attr(derive(bytecheck::CheckBytes))
-)]
-pub struct IntervalTreeMapIteratorMut<'v, 'i, T: Ord, V> {
+#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[archive(check_bytes)]
+pub struct IntervalTreeMapIteratorMut<'v, 'i, T: Ord + rkyv::Archive, V: rkyv::Archive> {
     pub(crate) nodes: Vec<&'v mut Node<T, V>>,
     pub(crate) interval: &'i Interval<T>,
 }
 
-impl<'v, 'i, T: Ord + 'i, V: 'v> Iterator for IntervalTreeMapIteratorMut<'v, 'i, T, V> {
+impl<'v, 'i, T: Ord + rkyv::Archive, V: rkyv::Archive> Iterator for IntervalTreeMapIteratorMut<'v, 'i, T, V> {
     type Item = EntryMut<'v, T, V>;
 
     fn next(&mut self) -> Option<EntryMut<'v, T, V>> {

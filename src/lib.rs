@@ -20,8 +20,10 @@ use std::{rc::Rc, vec::Vec, boxed::Box};
 use std::collections::HashMap;
 use core::cmp::Ord;
 use core::fmt::Debug;
-use core::ops::Bound;
 mod interval;
+mod range;
+use rkyv::*;
+use range::Bound;
 pub use interval::Interval;
 
 mod node;
@@ -83,17 +85,23 @@ use serde::{de, Deserialize, Serialize};
 /// let intervals = interval_tree.intervals_between(&low, &high);
 /// ```
 #[derive(Clone, Default, PartialEq, Deserialize, Serialize)]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
-    archive_attr(derive(bytecheck::CheckBytes))
-)]
-pub struct IntervalTreeMap<T: Ord, V> {
+#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[archive(check_bytes)]
+#[archive(bound(serialize = "T: rkyv::Serialize<__S>, V: rkyv::Serialize<__S>, __S: rkyv::ser::Serializer + rkyv::ser::SharedSerializeRegistry"))]
+#[archive(bound(deserialize = "T: rkyv::Archive, V: rkyv::Archive, <T as rkyv::Archive>::Archived: rkyv::Deserialize<T, __D>, <V as rkyv::Archive>::Archived: rkyv::Deserialize<V, __D>, __D: rkyv::de::SharedDeserializeRegistry"))]
+pub struct IntervalTreeMap<
+    T: Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<T>> + 'static,
+    V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<V>> + 'static,
+> {
+    #[omit_bounds]
     root: Option<Box<Node<T, V>>>,
     identifier_map: HashMap<String, Rc<V>>, // Raw pointer to value stored in Node
 }
 
-impl<T: Ord, V: Serialize + for<'b> Deserialize<'b>> IntervalTreeMap<T, V> {
+impl<
+T: Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<T>> + 'static,
+V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<V>> + 'static,
+> IntervalTreeMap<T, V> {
     /// Initialize an interval tree with end points of type usize
     ///
     /// # Examples
@@ -1025,7 +1033,13 @@ impl<T: Ord, V: Serialize + for<'b> Deserialize<'b>> IntervalTreeMap<T, V> {
     }
 }
 
-impl<'a, T: Debug + Ord, V: Debug + Serialize + for<'b> Deserialize<'b>> Debug for IntervalTreeMap<T, V> {
+impl<'a, T, V> Debug for IntervalTreeMap<T, V>
+where
+    T: Debug + Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<T>>,
+    V: Debug 
+        + rkyv::Archive 
+        + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<V>>
+{
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
         fmt.write_str("IntervalTreeMap ")?;
         fmt.debug_set().entries(self.intervals().iter()).finish()
@@ -1035,10 +1049,11 @@ impl<'a, T: Debug + Ord, V: Debug + Serialize + for<'b> Deserialize<'b>> Debug f
 #[cfg(test)]
 mod tests {
     use super::*;
-    use core::ops::Bound::{Excluded, Included, Unbounded};
+    use crate::range::Bound::{Excluded, Included, Unbounded};
 
     #[test]
     fn tree_interval_init() {
+        
         let interval_tree = IntervalTreeMap::<usize, ()>::new();
         assert!(interval_tree.is_empty());
         assert_eq!(interval_tree.size(), 0);
@@ -2104,37 +2119,37 @@ mod tests {
 
     #[test]
     fn tree_interval_query_2() {
-        let mut interval_tree = IntervalTreeMap::<usize, bool>::new();
-
-        interval_tree.insert(Interval::new(Excluded(0), Included(1)), true, String::default(), String::default());
-        interval_tree.insert(Interval::new(Included(0), Excluded(3)), true, String::default(), String::default());
-        interval_tree.insert(Interval::new(Included(6), Included(10)), true, String::default(), String::default());
-        interval_tree.insert(Interval::new(Excluded(8), Included(9)), true, String::default(), String::default());
-        interval_tree.insert(Interval::new(Excluded(15), Excluded(23)), true, String::default(), String::default());
-        interval_tree.insert(Interval::new(Included(16), Excluded(21)), true, String::default(), String::default());
-        interval_tree.insert(Interval::new(Included(17), Excluded(19)), true, String::default(), String::default());
-        interval_tree.insert(Interval::new(Excluded(19), Included(20)), true, String::default(), String::default());
-        interval_tree.insert(Interval::new(Excluded(25), Included(30)), true, String::default(), String::default());
-        interval_tree.insert(Interval::new(Included(26), Included(26)), true, String::default(), String::default());
-
-        let interval = Interval::new(Included(8), Included(26));
-        let iter = interval_tree.query_mut(&interval);
-
-        for mut entry in iter {
-            *entry.value() = false;
+        #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Default, Debug)]
+        struct Test {
+            bar: bool,
+            tool: i64
         }
 
-        // Serialize to bytes
-        let bytes = rkyv::to_bytes::<_, 256>(&interval_tree).unwrap();
+        let mut interval_tree = IntervalTreeMap::<usize, Test>::new();
 
-        // Deserialize
-        let archived = unsafe { rkyv::archived_root::<IntervalTreeMap<usize, bool>>(&bytes) };
-        let deserialized: IntervalTreeMap<usize, bool> = archived.deserialize(&mut rkyv::Infallible).unwrap();
+        interval_tree.insert(Interval::new(Excluded(0), Included(1)), Test { bar: true, tool: 42 }, String::default(), String::default());
+        interval_tree.insert(Interval::new(Included(0), Excluded(3)), Test { bar: false, tool: 17 }, String::default(), String::default());
+        interval_tree.insert(Interval::new(Included(6), Included(7)), Test { bar: true, tool: 99 }, String::default(), String::default());
+        interval_tree.insert(Interval::new(Included(8), Included(9)), Test { bar: false, tool: 123 }, String::default(), String::default());
+        interval_tree.insert(Interval::new(Excluded(15), Excluded(23)), Test { bar: true, tool: 456 }, String::default(), String::default());
+        interval_tree.insert(Interval::new(Included(16), Excluded(21)), Test { bar: false, tool: 789 }, String::default(), String::default());
+        interval_tree.insert(Interval::new(Included(17), Excluded(19)), Test { bar: true, tool: 321 }, String::default(), String::default());
+        interval_tree.insert(Interval::new(Excluded(19), Included(20)), Test { bar: false, tool: 654 }, String::default(), String::default());
+        interval_tree.insert(Interval::new(Excluded(25), Included(30)), Test { bar: true, tool: 987 }, String::default(), String::default());
+        interval_tree.insert(Interval::new(Included(26), Included(26)), Test { bar: false, tool: 246 }, String::default(), String::default());
+
+        let interval = Interval::new(Included(8), Included(9));
+        let iter = interval_tree.query_mut(&interval);
+
+        // Serialize to bytes
+        let bytes = rkyv::to_bytes::<_, 1024>(&interval_tree).unwrap();
+        // Deserialize 
+        let deserialized: IntervalTreeMap<usize, Test> = unsafe { rkyv::from_bytes_unchecked::<IntervalTreeMap<usize, Test>>(&bytes).unwrap() };
 
         // Verify deserialized data
         let iter = deserialized.query(&interval);
         for entry in iter {
-            assert!(!*entry.value());
+            assert!(entry.value().tool == 123);
         }
     }
 
