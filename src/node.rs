@@ -4,14 +4,17 @@ use core::{
     cmp::{max, Ord},
     ops::Bound::{self, Excluded, Included, Unbounded},
 };
-use serde::{Deserialize, Serialize};
-
+use rkyv::*;
 use crate::interval::Interval;
 
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
-#[cfg_attr(feature = "rkyv", rkyv(omit_bounds))]
-#[cfg_attr(feature = "rkyv", archive_attr(derive(bytecheck::CheckBytes)))]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[archive(check_bytes)]
+#[archive(bound(
+    serialize = "__S: rkyv::ser::ScratchSpace + rkyv::ser::Serializer + \
+                 rkyv::ser::SharedSerializeRegistry",
+    deserialize = "__D: rkyv::de::SharedDeserializeRegistry"
+))]
 pub(crate) struct Node<T: Ord, V> {
     pub interval: Option<Interval<T>>,
     pub value: Option<Rc<V>>,
@@ -19,12 +22,12 @@ pub(crate) struct Node<T: Ord, V> {
     pub max: Option<Rc<Bound<T>>>,
     pub height: usize,
     pub size: usize,
-    
+
     // Set of all identifiers in this subtree (another compared value).
     pub subtree_identifiers: BTreeSet<String>,
-    #[cfg_attr(feature = "rkyv", rkyv(omit_bounds))]
+    #[omit_bounds]
     pub left_child: Option<Box<Node<T, V>>>,
-    #[cfg_attr(feature = "rkyv", rkyv(omit_bounds))]
+    #[omit_bounds]
     pub right_child: Option<Box<Node<T, V>>>,
     // Used to constant time access to the value in the node
     pub value_key: String,
