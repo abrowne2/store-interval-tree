@@ -4,8 +4,8 @@ use core::{
     cmp::{max, Ord},
 };
 use crate::range::Bound::{self, Excluded, Included, Unbounded};
+use crate::IntervalValueKey;
 use rkyv::*;
-use bytecheck::*;
 use crate::interval::Interval;
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -29,7 +29,7 @@ pub(crate) struct Node<T: Ord + rkyv::Archive, V: rkyv::Archive> {
     #[omit_bounds]
     pub right_child: Option<Box<Node<T, V>>>,
     // Used to constant time access to the value in the node
-    pub value_key: String,
+    pub value_key: IntervalValueKey,
 }
 
 impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
@@ -40,7 +40,7 @@ impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
         identifier: String,
         height: usize,
         size: usize,
-        value_key: String,
+        value_key: IntervalValueKey,
     ) -> Node<T, V> {
         let mut subtree_identifiers = BTreeSet::new();
         subtree_identifiers.insert(identifier.clone());
@@ -105,7 +105,7 @@ impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
         self.value.take().unwrap()
     }
 
-    pub fn value_key(&self) -> &String {
+    pub fn value_key(&self) -> &IntervalValueKey {
         &self.value_key
     }
 
