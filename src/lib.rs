@@ -1,5 +1,5 @@
 #![warn(clippy::cargo)]
-#![recursion_limit = "256"]
+#![recursion_limit = "512"]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(clippy::all)]
 #![warn(

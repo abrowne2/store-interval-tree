@@ -1,4 +1,3 @@
-#![recursion_limit = "256"]
 use std::{rc::Rc, boxed::Box};
 use std::collections::BTreeSet;
 use core::{
