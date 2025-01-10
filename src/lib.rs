@@ -16,9 +16,6 @@
 #![allow(clippy::derive_hash_xor_eq)]
 #![allow(clippy::missing_panics_doc)]
 
-#[macro_use]
-pub extern crate alloc;
-
 use std::{rc::Rc, vec::Vec, boxed::Box};
 use std::collections::HashMap;
 use core::cmp::Ord;

@@ -7,12 +7,9 @@ use core::{
 use crate::interval::Interval;
 
 #[derive(Clone, Debug)]
-#[cfg_attr(
-    feature = "rkyv",
-    derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize),
-    archive_attr(omit_bounds),
-    archive_attr(derive(bytecheck::CheckBytes))
-)]
+#[cfg_attr(feature = "rkyv", derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize))]
+#[cfg_attr(feature = "rkyv", rkyv(omit_bounds))]
+#[cfg_attr(feature = "rkyv", archive_attr(derive(bytecheck::CheckBytes)))]
 pub(crate) struct Node<T: Ord, V> {
     pub interval: Option<Interval<T>>,
     pub value: Option<Rc<V>>,
@@ -23,9 +20,9 @@ pub(crate) struct Node<T: Ord, V> {
     
     // Set of all identifiers in this subtree (another compared value).
     pub subtree_identifiers: BTreeSet<String>,
-    #[cfg_attr(feature = "rkyv", archive_attr(omit_bounds))]
+    #[cfg_attr(feature = "rkyv", rkyv(omit_bounds))]
     pub left_child: Option<Box<Node<T, V>>>,
-    #[cfg_attr(feature = "rkyv", archive_attr(omit_bounds))]
+    #[cfg_attr(feature = "rkyv", rkyv(omit_bounds))]
     pub right_child: Option<Box<Node<T, V>>>,
     // Used to constant time access to the value in the node
     pub value_key: String,
