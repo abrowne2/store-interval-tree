@@ -1,5 +1,5 @@
 #![warn(clippy::cargo)]
-#![recursion_limit = "512"]
+#![recursion_limit = "1024"]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(clippy::all)]
 #![warn(
@@ -33,14 +33,18 @@ mod iterators;
 pub use iterators::{Entry, EntryMut, IntervalTreeMapIterator, IntervalTreeMapIteratorMut};
 use serde::{de, Deserialize, Serialize};
 
-#[derive(Clone, Default, PartialEq, Deserialize, Serialize, Debug, Hash, Eq)]
+#[derive(Clone, Default, PartialEq, Deserialize, Serialize, Debug, Hash, Eq, PartialOrd, Ord)]
 #[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
-#[archive_attr(derive(Hash, Eq, PartialEq))]
+#[archive_attr(derive(Hash, Eq, PartialEq, PartialOrd, Ord))]
 pub struct IntervalValueKey(String);
 
 impl IntervalValueKey {
     pub fn new(key: String) -> IntervalValueKey {
         IntervalValueKey(key)
+    }
+
+    pub fn from(key: &str) -> IntervalValueKey {
+        IntervalValueKey(key.to_string())
     }
 }
 
@@ -427,7 +431,7 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<V>>
     pub fn find_overlap_with_identifier(
         &self,
         interval: &Interval<T>,
-        identifier: &str,
+        identifier: &IntervalValueKey,
     ) -> Option<(Interval<T>, &V)> {
         Self::_find_overlap_with_identifier(&self.root, interval, identifier)
     }
@@ -435,7 +439,7 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<V>>
     fn _find_overlap_with_identifier<'a>(
         node: &'a Option<Box<Node<T, V>>>,
         interval: &Interval<T>,
-        identifier: &str,
+        identifier: &IntervalValueKey,
     ) -> Option<(Interval<T>, &'a V)> {
         if node.is_none() {
             return None;
@@ -498,7 +502,7 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<V>>
     /// interval_tree.insert(Interval::new(Excluded(25), Included(30)), ());
     /// interval_tree.insert(Interval::new(Included(26), Included(26)), ());
     /// ```
-    pub fn insert(&mut self, interval: Interval<T>, value: V, identifier: String, value_key: IntervalValueKey) {
+    pub fn insert(&mut self, interval: Interval<T>, value: V, identifier: IntervalValueKey, value_key: IntervalValueKey) {
         let max = interval.get_high();
 
         let value_with_shared_pointer = Rc::new(value);
@@ -521,7 +525,7 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<V>>
         node: Option<Box<Node<T, V>>>,
         interval: Interval<T>,
         value_with_shared_pointer: Rc<V>,
-        identifier: String,
+        identifier: IntervalValueKey,
         max: Rc<Bound<T>>,
         value_key: IntervalValueKey,
     ) -> Box<Node<T, V>> {
@@ -1083,61 +1087,61 @@ mod tests {
         interval_tree.insert(
             Interval::new(Included(0), Included(3)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(5), Included(8)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(6), Included(10)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(8), Included(9)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(15), Included(23)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(16), Included(21)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(17), Included(19)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(19), Included(20)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(25), Included(30)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(26), Included(26)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
 
@@ -1151,61 +1155,61 @@ mod tests {
         interval_tree.insert(
             Interval::new(Included(0), Included(3)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(5), Included(8)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(6), Included(10)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(8), Included(9)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(15), Included(23)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(16), Included(21)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(17), Included(19)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(19), Included(20)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(25), Included(30)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(26), Included(26)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
 
@@ -1311,61 +1315,61 @@ mod tests {
         interval_tree.insert(
             Interval::new(Included(0), Excluded(3)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(5), Included(8)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(6), Included(10)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(8), Included(9)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(15), Excluded(23)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(16), Excluded(21)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(17), Excluded(19)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(19), Included(20)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(25), Included(30)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(26), Included(26)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
 
@@ -1456,61 +1460,61 @@ mod tests {
         interval_tree.insert(
             Interval::new(Unbounded, Excluded(3)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(5), Included(8)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(6), Included(10)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Unbounded, Included(9)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(15), Excluded(23)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Unbounded, Excluded(21)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(17), Excluded(19)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(19), Unbounded), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Unbounded, Included(30)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(26), Unbounded), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
 
@@ -1603,61 +1607,61 @@ mod tests {
         interval_tree.insert(
             Interval::new(Included(0), Included(3)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(5), Included(8)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(6), Included(10)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(8), Included(9)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(15), Included(23)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(16), Included(21)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(17), Included(19)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(19), Included(20)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(25), Included(30)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(26), Included(26)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
 
@@ -1683,61 +1687,61 @@ mod tests {
         interval_tree.insert(
             Interval::new(Excluded(0), Included(1)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(0), Excluded(3)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(6), Included(10)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(8), Included(9)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(15), Excluded(23)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(16), Excluded(21)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(17), Excluded(19)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(19), Included(20)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(25), Included(30)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(26), Included(26)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
 
@@ -1756,61 +1760,61 @@ mod tests {
         interval_tree.insert(
             Interval::new(Included(0), Included(3)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(5), Included(8)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(6), Included(10)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(8), Included(9)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(15), Included(23)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(16), Included(21)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(17), Included(19)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(19), Included(20)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(25), Included(30)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(26), Included(26)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
 
@@ -1829,61 +1833,61 @@ mod tests {
         interval_tree.insert(
             Interval::new(Excluded(0), Included(1)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(0), Excluded(3)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(6), Included(10)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(8), Included(9)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(15), Excluded(23)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(16), Excluded(21)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(17), Excluded(19)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(19), Included(20)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(25), Included(30)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(26), Included(26)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
 
@@ -1906,61 +1910,61 @@ mod tests {
         interval_tree.insert(
             Interval::new(Excluded(0), Included(1)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(0), Excluded(3)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(6), Included(10)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(8), Included(9)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(15), Excluded(23)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(16), Excluded(21)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(17), Excluded(19)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(19), Included(20)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(25), Included(30)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(26), Included(26)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
 
@@ -1985,61 +1989,61 @@ mod tests {
         interval_tree.insert(
             Interval::new(Excluded(0), Included(1)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(0), Excluded(3)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(6), Included(10)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(8), Included(9)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(15), Excluded(23)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(16), Excluded(21)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(17), Excluded(19)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(19), Included(20)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Excluded(25), Included(30)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         interval_tree.insert(
             Interval::new(Included(26), Included(26)), 
             (), 
-            String::default(), 
+            IntervalValueKey::default(), 
             IntervalValueKey::default()
         );
         let interval = Interval::new(Included(8), Included(26));
@@ -2063,45 +2067,45 @@ mod tests {
         interval_tree.insert(
             Interval::new(Excluded(0), Included(1)), 
             (), 
-            String::from("id1"), 
+            IntervalValueKey::from("id1"), 
             IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Excluded(0), Included(1)), (), String::from("id1"), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(0), Excluded(3)), (), String::from("id1"), IntervalValueKey::default()); // Same id1
-        interval_tree.insert(Interval::new(Included(6), Included(10)), (), String::from("id2"), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Excluded(8), Included(9)), (), String::from("id2"), IntervalValueKey::default()); // Same id2
-        interval_tree.insert(Interval::new(Excluded(15), Excluded(23)), (), String::from("id3"), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(16), Excluded(21)), (), String::from("id3"), IntervalValueKey::default()); // Same id3
-        interval_tree.insert(Interval::new(Included(17), Excluded(19)), (), String::from("id4"), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Excluded(19), Included(20)), (), String::from("id4"), IntervalValueKey::default()); // Same id4
-        interval_tree.insert(Interval::new(Excluded(25), Included(30)), (), String::from("id5"), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(26), Included(26)), (), String::from("id5"), IntervalValueKey::default()); // Same id5
+        interval_tree.insert(Interval::new(Excluded(0), Included(1)), (), IntervalValueKey::from("id1"), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(0), Excluded(3)), (), IntervalValueKey::from("id1"), IntervalValueKey::default()); // Same id1
+        interval_tree.insert(Interval::new(Included(6), Included(10)), (), IntervalValueKey::from("id2"), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(8), Included(9)), (), IntervalValueKey::from("id2"), IntervalValueKey::default()); // Same id2
+        interval_tree.insert(Interval::new(Excluded(15), Excluded(23)), (), IntervalValueKey::from("id3"), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(16), Excluded(21)), (), IntervalValueKey::from("id3"), IntervalValueKey::default()); // Same id3
+        interval_tree.insert(Interval::new(Included(17), Excluded(19)), (), IntervalValueKey::from("id4"), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(19), Included(20)), (), IntervalValueKey::from("id4"), IntervalValueKey::default()); // Same id4
+        interval_tree.insert(Interval::new(Excluded(25), Included(30)), (), IntervalValueKey::from("id5"), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(26), Included(26)), (), IntervalValueKey::from("id5"), IntervalValueKey::default()); // Same id5
 
         // Test finding specific intervals by identifier
         let test_interval = Interval::new(Included(16), Included(18));
         
         // Should find id3 interval [16,21) which overlaps with test interval
-        let overlap = interval_tree.find_overlap_with_identifier(&test_interval, "id3");
+        let overlap = interval_tree.find_overlap_with_identifier(&test_interval, &IntervalValueKey::from("id3"));
         assert!(overlap.is_some());
         assert_eq!(format!("{}", overlap.unwrap().0), "[16,21)");
 
         // Should find first overlapping interval with id3
         let test_interval_2 = Interval::new(Included(15), Included(22));
-        let overlap_2 = interval_tree.find_overlap_with_identifier(&test_interval_2, "id3");
+        let overlap_2 = interval_tree.find_overlap_with_identifier(&test_interval_2, &IntervalValueKey::from("id3"));
         assert!(overlap_2.is_some());
         assert_eq!(format!("{}", overlap_2.unwrap().0), "[16,21)");
 
         // Should find id4 interval [17,19) which overlaps with test interval
-        let overlap_id4 = interval_tree.find_overlap_with_identifier(&test_interval, "id4");
+        let overlap_id4 = interval_tree.find_overlap_with_identifier(&test_interval, &IntervalValueKey::from("id4"));
         assert_eq!(format!("{}", overlap_id4.unwrap().0), "[17,19)");
 
         // Test overlaps with intervals sharing same identifier
         let test_interval_3 = Interval::new(Included(0), Included(2));
-        let overlap_3 = interval_tree.find_overlap_with_identifier(&test_interval_3, "id1");
+        let overlap_3 = interval_tree.find_overlap_with_identifier(&test_interval_3, &IntervalValueKey::from("id1"));
         assert!(overlap_3.is_some());
         assert_eq!(format!("{}", overlap_3.unwrap().0), "(0,1]");
 
         // Should not find non-existent identifier even though interval would overlap
-        let wrong_id = interval_tree.find_overlap_with_identifier(&test_interval, "wrong_id");
+        let wrong_id = interval_tree.find_overlap_with_identifier(&test_interval, &IntervalValueKey::from("wrong_id"));
         assert!(wrong_id.is_none());
     }
 
@@ -2109,16 +2113,16 @@ mod tests {
     fn tree_interval_query_1() {
         let mut interval_tree = IntervalTreeMap::<usize, ()>::new();
 
-        interval_tree.insert(Interval::new(Excluded(0), Included(1)), (), String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(0), Excluded(3)), (), String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(6), Included(10)), (), String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Excluded(8), Included(9)), (), String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Excluded(15), Excluded(23)), (), String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(16), Excluded(21)), (), String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(17), Excluded(19)), (), String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Excluded(19), Included(20)), (), String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Excluded(25), Included(30)), (), String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(26), Included(26)), (), String::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(0), Included(1)), (), IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(0), Excluded(3)), (), IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(6), Included(10)), (), IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(8), Included(9)), (), IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(15), Excluded(23)), (), IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(16), Excluded(21)), (), IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(17), Excluded(19)), (), IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(19), Included(20)), (), IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(25), Included(30)), (), IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(26), Included(26)), (), IntervalValueKey::default(), IntervalValueKey::default());
 
         let interval = Interval::new(Included(8), Included(26));
         let iter = interval_tree.query(&interval);
@@ -2143,16 +2147,16 @@ mod tests {
 
         let mut interval_tree = IntervalTreeMap::<usize, Test>::new();
 
-        interval_tree.insert(Interval::new(Excluded(0), Included(1)), Test { bar: true, tool: 42 }, String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(0), Excluded(3)), Test { bar: false, tool: 17 }, String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(6), Included(7)), Test { bar: true, tool: 99 }, String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(8), Included(9)), Test { bar: false, tool: 123 }, String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Excluded(15), Excluded(23)), Test { bar: true, tool: 456 }, String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(16), Excluded(21)), Test { bar: false, tool: 789 }, String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(17), Excluded(19)), Test { bar: true, tool: 321 }, String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Excluded(19), Included(20)), Test { bar: false, tool: 654 }, String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Excluded(25), Included(30)), Test { bar: true, tool: 987 }, String::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(26), Included(26)), Test { bar: false, tool: 246 }, String::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(0), Included(1)), Test { bar: true, tool: 42 }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(0), Excluded(3)), Test { bar: false, tool: 17 }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(6), Included(7)), Test { bar: true, tool: 99 }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(8), Included(9)), Test { bar: false, tool: 123 }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(15), Excluded(23)), Test { bar: true, tool: 456 }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(16), Excluded(21)), Test { bar: false, tool: 789 }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(17), Excluded(19)), Test { bar: true, tool: 321 }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(19), Included(20)), Test { bar: false, tool: 654 }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(25), Included(30)), Test { bar: true, tool: 987 }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(26), Included(26)), Test { bar: false, tool: 246 }, IntervalValueKey::default(), IntervalValueKey::default());
 
         let interval = Interval::new(Included(8), Included(9));
         let iter = interval_tree.query_mut(&interval);
@@ -2173,7 +2177,7 @@ mod tests {
     fn tree_interval_debug() {
         let mut interval_tree = IntervalTreeMap::<usize, ()>::new();
         assert_eq!(format!("{:?}", &interval_tree), "IntervalTreeMap {}");
-        interval_tree.insert(Interval::new(Excluded(0), Included(1)), (), String::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(0), Included(1)), (), IntervalValueKey::default(), IntervalValueKey::default());
         assert_eq!(
             format!("{:?}", &interval_tree),
             "IntervalTreeMap {Interval { low: Excluded(0), high: Included(1) }}"

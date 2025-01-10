@@ -17,13 +17,13 @@ pub(crate) struct Node<T: Ord + rkyv::Archive, V: rkyv::Archive> {
 
     pub interval: Option<Interval<T>>,
     pub value: Option<Rc<V>>,
-    pub identifier: Option<String>,
+    pub identifier: Option<IntervalValueKey>,
     pub max: Option<Rc<Bound<T>>>,
     pub height: usize,
     pub size: usize,
 
     // Set of all identifiers in this subtree (another compared value).
-    pub subtree_identifiers: BTreeSet<String>,
+    pub subtree_identifiers: BTreeSet<IntervalValueKey>,
     #[omit_bounds]
     pub left_child: Option<Box<Node<T, V>>>,
     #[omit_bounds]
@@ -37,7 +37,7 @@ impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
         interval: Interval<T>,
         value: Rc<V>,
         max: Rc<Bound<T>>,
-        identifier: String,
+        identifier: IntervalValueKey,
         height: usize,
         size: usize,
         value_key: IntervalValueKey,
@@ -117,7 +117,7 @@ impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
         self.interval.take().unwrap()
     }
 
-    pub fn get_identifier(&mut self) -> String {
+    pub fn get_identifier(&mut self) -> IntervalValueKey {
         self.identifier.take().unwrap()
     }
 
