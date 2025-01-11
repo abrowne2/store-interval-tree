@@ -21,7 +21,7 @@ use std::collections::HashMap;
 use core::cmp::Ord;
 use core::fmt::Debug;
 mod interval;
-mod range;
+pub mod range;
 use rkyv::*;
 use range::Bound;
 pub use interval::Interval;
