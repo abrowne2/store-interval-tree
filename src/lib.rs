@@ -509,6 +509,7 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
 
         if !self.identifier_map.contains_key(&value_key) {
             self.identifier_map.insert(value_key.clone(), value_with_shared_pointer.clone());
+            println!("inserted value_key: {:?}", value_key);
         }
 
         self.root = Some(IntervalTreeMap::_insert(
