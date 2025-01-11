@@ -509,7 +509,6 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
 
         if !self.identifier_map.contains_key(&value_key) {
             self.identifier_map.insert(value_key.clone(), value_with_shared_pointer.clone());
-            println!("inserted value_key: {:?}", value_key);
         }
 
         self.root = Some(IntervalTreeMap::_insert(
@@ -1064,7 +1063,10 @@ where
 {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
         fmt.write_str("IntervalTreeMap ")?;
-        fmt.debug_set().entries(self.intervals().iter()).finish()
+        fmt.debug_struct("IntervalTreeMap")
+            .field("intervals", &self.intervals())
+            .field("identifier_map", &self.identifier_map)
+            .finish()
     }
 }
 
