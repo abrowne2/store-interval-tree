@@ -111,8 +111,8 @@ impl std::fmt::Display for IntervalValueKey {
 #[archive(bound(serialize = "T: rkyv::Serialize<__S>, V: rkyv::Serialize<__S>, __S: rkyv::ser::Serializer + rkyv::ser::SharedSerializeRegistry"))]
 #[archive(bound(deserialize = "T: rkyv::Archive, V: rkyv::Archive, <T as rkyv::Archive>::Archived: rkyv::Deserialize<T, __D>, <V as rkyv::Archive>::Archived: rkyv::Deserialize<V, __D>, __D: rkyv::de::SharedDeserializeRegistry"))]
 pub struct IntervalTreeMap<
-    T: Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<T>> + 'static,
-    V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<V>> + 'static,
+    T: Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<AlignedVec>> + 'static,
+    V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<AlignedVec>> + 'static,
 > {
     #[omit_bounds]
     root: Option<Box<Node<T, V>>>,
@@ -120,8 +120,8 @@ pub struct IntervalTreeMap<
 }
 
 impl<
-T: Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<T>> + 'static,
-V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<V>> + 'static,
+T: Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<AlignedVec>> + 'static,
+V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<AlignedVec>> + 'static,
 > IntervalTreeMap<T, V> {
     /// Initialize an interval tree with end points of type usize
     ///
@@ -1056,10 +1056,10 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<V>>
 
 impl<'a, T, V> Debug for IntervalTreeMap<T, V>
 where
-    T: Debug + Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<T>>,
+    T: Debug + Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<AlignedVec>>,
     V: Debug 
         + rkyv::Archive 
-        + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<V>>
+        + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<AlignedVec>>
 {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
         fmt.write_str("IntervalTreeMap ")?;
@@ -2140,23 +2140,24 @@ mod tests {
     #[test]
     fn tree_interval_query_2() {
         #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Default, Debug)]
+        #[archive(check_bytes)]
+        #[archive_attr(derive(Debug))]
         struct Test {
             bar: bool,
-            tool: i64
+            tool: String
         }
 
         let mut interval_tree = IntervalTreeMap::<usize, Test>::new();
-
-        interval_tree.insert(Interval::new(Excluded(0), Included(1)), Test { bar: true, tool: 42 }, IntervalValueKey::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(0), Excluded(3)), Test { bar: false, tool: 17 }, IntervalValueKey::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(6), Included(7)), Test { bar: true, tool: 99 }, IntervalValueKey::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(8), Included(9)), Test { bar: false, tool: 123 }, IntervalValueKey::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Excluded(15), Excluded(23)), Test { bar: true, tool: 456 }, IntervalValueKey::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(16), Excluded(21)), Test { bar: false, tool: 789 }, IntervalValueKey::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(17), Excluded(19)), Test { bar: true, tool: 321 }, IntervalValueKey::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Excluded(19), Included(20)), Test { bar: false, tool: 654 }, IntervalValueKey::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Excluded(25), Included(30)), Test { bar: true, tool: 987 }, IntervalValueKey::default(), IntervalValueKey::default());
-        interval_tree.insert(Interval::new(Included(26), Included(26)), Test { bar: false, tool: 246 }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(0), Included(1)), Test { bar: true, tool: "42".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(0), Excluded(3)), Test { bar: false, tool: "17".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(6), Included(7)), Test { bar: true, tool: "99".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(8), Included(9)), Test { bar: false, tool: "123".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(15), Excluded(23)), Test { bar: true, tool: "456".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(16), Excluded(21)), Test { bar: false, tool: "789".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(17), Excluded(19)), Test { bar: true, tool: "321".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(19), Included(20)), Test { bar: false, tool: "654".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(25), Included(30)), Test { bar: true, tool: "987".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(26), Included(26)), Test { bar: false, tool: "246".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
 
         let interval = Interval::new(Included(8), Included(9));
         let iter = interval_tree.query_mut(&interval);
@@ -2169,7 +2170,7 @@ mod tests {
         // Verify deserialized data
         let iter = deserialized.query(&interval);
         for entry in iter {
-            assert!(entry.value().tool == 123);
+            assert!(entry.value().tool == "123".to_string());
         }
     }
 
