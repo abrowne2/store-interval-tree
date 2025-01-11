@@ -1,4 +1,4 @@
-use std::{rc::Rc, vec::Vec};
+use std::{sync::Arc, vec::Vec};
 use core::{cmp::Ord, fmt::Debug};
 
 use crate::{interval::Interval, node::Node};
@@ -129,7 +129,7 @@ impl<'v, 'i, T: Ord + rkyv::Archive, V: rkyv::Archive> Iterator for IntervalTree
 
             if overlaps {
                 return Some(EntryMut {
-                    value: Rc::get_mut(node_ref.value.as_mut().unwrap()).unwrap(),
+                    value: Arc::get_mut(node_ref.value.as_mut().unwrap()).unwrap(),
                     interval: node_ref.interval.as_ref().unwrap(),
                 });
             }

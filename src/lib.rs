@@ -16,7 +16,7 @@
 #![allow(clippy::derive_hash_xor_eq)]
 #![allow(clippy::missing_panics_doc)]
 
-use std::{rc::Rc, vec::Vec, boxed::Box};
+use std::{sync::Arc, vec::Vec, boxed::Box};
 use std::collections::HashMap;
 use core::cmp::Ord;
 use core::fmt::Debug;
@@ -116,7 +116,7 @@ pub struct IntervalTreeMap<
 > {
     #[omit_bounds]
     root: Option<Box<Node<T, V>>>,
-    identifier_map: HashMap<IntervalValueKey, Rc<V>>, // Raw pointer to value stored in Node
+    identifier_map: HashMap<IntervalValueKey, Arc<V>>, // Raw pointer to value stored in Node
 }
 
 impl<
@@ -323,11 +323,11 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
         IntervalTreeMap::_find_overlap(&self.root, interval)
     }
 
-    pub fn get_node_value_by_key_mut(&mut self, key: IntervalValueKey) -> Option<&mut Rc<V>> {
+    pub fn get_node_value_by_key_mut(&mut self, key: IntervalValueKey) -> Option<&mut Arc<V>> {
         self.identifier_map.get_mut(&key)
     }
 
-    pub fn get_node_value_by_key(&self, key: IntervalValueKey) -> Option<&Rc<V>> {
+    pub fn get_node_value_by_key(&self, key: IntervalValueKey) -> Option<&Arc<V>> {
         self.identifier_map.get(&key)
     }
 
@@ -505,7 +505,7 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
     pub fn insert(&mut self, interval: Interval<T>, value: V, identifier: IntervalValueKey, value_key: IntervalValueKey) {
         let max = interval.get_high();
 
-        let value_with_shared_pointer = Rc::new(value);
+        let value_with_shared_pointer = Arc::new(value);
 
         if !self.identifier_map.contains_key(&value_key) {
             self.identifier_map.insert(value_key.clone(), value_with_shared_pointer.clone());
@@ -524,9 +524,9 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
     fn _insert(
         node: Option<Box<Node<T, V>>>,
         interval: Interval<T>,
-        value_with_shared_pointer: Rc<V>,
+        value_with_shared_pointer: Arc<V>,
         identifier: IntervalValueKey,
-        max: Rc<Bound<T>>,
+        max: Arc<Bound<T>>,
         value_key: IntervalValueKey,
     ) -> Box<Node<T, V>> {
         if node.is_none() {

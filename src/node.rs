@@ -1,4 +1,4 @@
-use std::{rc::Rc, boxed::Box};
+use std::{sync::Arc, boxed::Box};
 use std::collections::BTreeSet;
 use core::{
     cmp::{max, Ord},
@@ -16,9 +16,9 @@ use crate::interval::Interval;
 pub(crate) struct Node<T: Ord + rkyv::Archive, V: rkyv::Archive> {
 
     pub interval: Option<Interval<T>>,
-    pub value: Option<Rc<V>>,
+    pub value: Option<Arc<V>>,
     pub identifier: Option<IntervalValueKey>,
-    pub max: Option<Rc<Bound<T>>>,
+    pub max: Option<Arc<Bound<T>>>,
     pub height: usize,
     pub size: usize,
 
@@ -35,8 +35,8 @@ pub(crate) struct Node<T: Ord + rkyv::Archive, V: rkyv::Archive> {
 impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
     pub fn init(
         interval: Interval<T>,
-        value: Rc<V>,
-        max: Rc<Bound<T>>,
+        value: Arc<V>,
+        max: Arc<Bound<T>>,
         identifier: IntervalValueKey,
         height: usize,
         size: usize,
@@ -59,11 +59,11 @@ impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
         }
     }
 
-    pub fn value(&self) -> &Rc<V> {
+    pub fn value(&self) -> &Arc<V> {
         self.value.as_ref().unwrap()
     }
 
-    pub fn value_mut(&mut self) -> &mut Rc<V> {
+    pub fn value_mut(&mut self) -> &mut Arc<V> {
         self.value.as_mut().unwrap()
     }
 
@@ -101,7 +101,7 @@ impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
     //    self.value.as_mut().unwrap()
     //}
 
-    pub fn get_value(&mut self) -> Rc<V> {
+    pub fn get_value(&mut self) -> Arc<V> {
         self.value.take().unwrap()
     }
 
@@ -121,8 +121,8 @@ impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
         self.identifier.take().unwrap()
     }
 
-    pub fn get_max(&self) -> Rc<Bound<T>> {
-        Rc::clone(self.max.as_ref().unwrap())
+    pub fn get_max(&self) -> Arc<Bound<T>> {
+        Arc::clone(self.max.as_ref().unwrap())
     }
 
     // _max_height is at least -1, so +1 is a least 0 - and it can never be higher than usize
@@ -150,10 +150,10 @@ impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
             (None, None) => self.interval().get_high(),
         };
 
-        self.max = Some(Rc::clone(&max));
+        self.max = Some(Arc::clone(&max));
     }
 
-    pub fn find_max(bound1: Rc<Bound<T>>, bound2: Rc<Bound<T>>) -> Rc<Bound<T>> {
+    pub fn find_max(bound1: Arc<Bound<T>>, bound2: Arc<Bound<T>>) -> Arc<Bound<T>> {
         match (bound1.as_ref(), bound2.as_ref()) {
             (Included(val1), Included(val2) | Excluded(val2))
             | (Excluded(val1), Excluded(val2)) => {
@@ -175,7 +175,7 @@ impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
         }
     }
 
-    pub fn is_ge(bound1: &Rc<Bound<T>>, bound2: &Rc<Bound<T>>) -> bool {
+    pub fn is_ge(bound1: &Arc<Bound<T>>, bound2: &Arc<Bound<T>>) -> bool {
         match (bound1.as_ref(), bound2.as_ref()) {
             (Included(val1), Included(val2)) => val1 >= val2,
             (Included(val1) | Excluded(val1), Excluded(val2))
