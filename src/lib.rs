@@ -154,6 +154,27 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
         Node::height(&self.root)
     }
 
+    /// Removes all intervals from the tree but keeps the allocated capacity
+    ///
+    /// # Examples
+    /// ```
+    /// use store_interval_tree::IntervalTreeMap;
+    /// use store_interval_tree::Interval;
+    /// use std::ops::Bound::*;
+    ///
+    /// let mut interval_tree = IntervalTreeMap::<usize, ()>::new();
+    /// interval_tree.insert(Interval::new(Included(0), Excluded(3)), ());
+    /// interval_tree.insert(Interval::new(Included(6), Included(10)), ());
+    /// 
+    /// interval_tree.clear();
+    /// assert!(interval_tree.is_empty());
+    /// ```
+    pub fn clear(&mut self) {
+        // Setting the root node to None will trigger a GC of the tree
+        self.root = None;
+        self.identifier_map.clear(); // Clears contents but preserves capacity
+    }
+
     /// Find overlapping intervals in the tree and returns an
     /// `IntervalTreeMapIterator` that allows access to the stored value
     ///
