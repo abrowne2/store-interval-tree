@@ -31,7 +31,6 @@ use node::Node;
 
 mod iterators;
 pub use iterators::{Entry, EntryMut, IntervalTreeMapIterator, IntervalTreeMapIteratorMut};
-use ser::serializers::AllocScratch;
 use serde::{de, Deserialize, Serialize};
 
 #[derive(Clone, Default, PartialEq, Deserialize, Serialize, Debug, Hash, Eq, PartialOrd, Ord)]
@@ -112,8 +111,8 @@ impl std::fmt::Display for IntervalValueKey {
 #[archive(bound(serialize = "T: rkyv::Serialize<__S>, V: rkyv::Serialize<__S>, __S: rkyv::ser::Serializer + rkyv::ser::SharedSerializeRegistry"))]
 #[archive(bound(deserialize = "T: rkyv::Archive, V: rkyv::Archive, <T as rkyv::Archive>::Archived: rkyv::Deserialize<T, __D>, <V as rkyv::Archive>::Archived: rkyv::Deserialize<V, __D>, __D: rkyv::de::SharedDeserializeRegistry"))]
 pub struct IntervalTreeMap<
-    T: Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::CompositeSerializer<rkyv::ser::serializers::AlignedSerializer<AlignedVec>, AllocScratch>> + 'static,
-    V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::CompositeSerializer<rkyv::ser::serializers::AlignedSerializer<AlignedVec>, AllocScratch>> + 'static,
+    T: Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<AlignedVec>> + 'static,
+    V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<AlignedVec>> + 'static,
 > {
     #[omit_bounds]
     root: Option<Box<Node<T, V>>>,
@@ -121,8 +120,8 @@ pub struct IntervalTreeMap<
 }
 
 impl<
-T: Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::CompositeSerializer<rkyv::ser::serializers::AlignedSerializer<AlignedVec>, AllocScratch>> + 'static,
-V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::CompositeSerializer<rkyv::ser::serializers::AlignedSerializer<AlignedVec>, AllocScratch>> + 'static,
+T: Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<AlignedVec>> + 'static,
+V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<AlignedVec>> + 'static,
 > IntervalTreeMap<T, V> {
     /// Initialize an interval tree with end points of type usize
     ///
@@ -1079,10 +1078,10 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::CompositeSerializer<r
 
 impl<'a, T, V> Debug for IntervalTreeMap<T, V>
 where
-    T: Debug + Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::CompositeSerializer<rkyv::ser::serializers::AlignedSerializer<AlignedVec>, AllocScratch>>,
+    T: Debug + Ord + rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<AlignedVec>>,
     V: Debug 
         + rkyv::Archive 
-        + rkyv::Serialize<rkyv::ser::serializers::CompositeSerializer<rkyv::ser::serializers::AlignedSerializer<AlignedVec>, AllocScratch>>
+        + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<AlignedVec>>
 {
     fn fmt(&self, fmt: &mut core::fmt::Formatter) -> core::fmt::Result {
         fmt.write_str("IntervalTreeMap ")?;
