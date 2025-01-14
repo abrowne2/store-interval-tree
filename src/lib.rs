@@ -349,6 +349,10 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
         self.identifier_map.get_mut(&key)
     }
 
+    pub fn get_node_value_by_key_mut_ref(&mut self, key: &IntervalValueKey) -> Option<&mut Arc<V>> {
+        self.identifier_map.get_mut(key)
+    }
+
     pub fn get_node_value_by_key(&self, key: IntervalValueKey) -> Option<&Arc<V>> {
         self.identifier_map.get(&key)
     }
