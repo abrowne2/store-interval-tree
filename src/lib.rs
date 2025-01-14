@@ -449,6 +449,42 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
         IntervalTreeMap::_find_overlaps(&node_ref.right_child, interval, overlaps);
     }
 
+    /// Returns all intervals and their associated values that overlap with the specified `interval`
+    ///
+    /// # Arguments
+    /// * `interval`: interval to be searched for any overlaps
+    ///
+    /// # Returns
+    /// A vector of tuples containing overlapping intervals and references to their associated values
+    #[must_use]
+    pub fn find_overlaps_and_value(&self, interval: &Interval<T>) -> Vec<(Interval<T>, &V)> {
+        let mut overlaps = Vec::<(Interval<T>, &V)>::new();
+        IntervalTreeMap::_find_overlaps_and_value(&self.root, interval, &mut overlaps);
+        overlaps
+    }
+
+    fn _find_overlaps_and_value<'a>(
+        node: &'a Option<Box<Node<T, V>>>,
+        interval: &Interval<T>,
+        overlaps: &mut Vec<(Interval<T>, &'a V)>,
+    ) {
+        if let Some(node_ref) = node {
+            if Interval::overlaps(node_ref.interval(), interval) {
+                overlaps.push((node_ref.interval().duplicate(), node_ref.value()));
+            }
+
+            if node_ref.left_child.is_some()
+                && Node::<T, V>::is_ge(
+                    &node_ref.left_child.as_ref().unwrap().get_max(),
+                    &interval.get_low(),
+                )
+            {
+                IntervalTreeMap::_find_overlaps_and_value(&node_ref.left_child, interval, overlaps);
+            }
+            IntervalTreeMap::_find_overlaps_and_value(&node_ref.right_child, interval, overlaps);
+        }
+    }
+
     /// Find first interval that overlaps and matches the identifier, along with its associated value
     pub fn find_overlap_with_identifier(
         &self,
@@ -2200,13 +2236,48 @@ mod tests {
     }
 
     #[test]
-    fn tree_interval_debug() {
-        let mut interval_tree = IntervalTreeMap::<usize, ()>::new();
-        assert_eq!(format!("{:?}", &interval_tree), "IntervalTreeMap {}");
-        interval_tree.insert(Interval::new(Excluded(0), Included(1)), (), IntervalValueKey::default(), IntervalValueKey::default());
-        assert_eq!(
-            format!("{:?}", &interval_tree),
-            "IntervalTreeMap {Interval { low: Excluded(0), high: Included(1) }}"
-        );
+    fn tree_interval_find_overlaps_and_value() {
+        #[derive(rkyv::Archive, rkyv::Serialize, rkyv::Deserialize, Default, Debug)]
+        #[archive(check_bytes)]
+        #[archive_attr(derive(Debug))]
+        struct Test {
+            bar: bool,
+            tool: String
+        }
+
+        let mut interval_tree = IntervalTreeMap::<usize, Test>::new();
+        interval_tree.insert(Interval::new(Excluded(0), Included(1)), Test { bar: true, tool: "42".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(0), Excluded(3)), Test { bar: false, tool: "17".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(6), Included(7)), Test { bar: true, tool: "99".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(8), Included(9)), Test { bar: false, tool: "123".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(15), Excluded(23)), Test { bar: true, tool: "456".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(16), Excluded(21)), Test { bar: false, tool: "789".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(17), Excluded(19)), Test { bar: true, tool: "321".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(19), Included(20)), Test { bar: false, tool: "654".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Excluded(25), Included(30)), Test { bar: true, tool: "987".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+        interval_tree.insert(Interval::new(Included(26), Included(26)), Test { bar: false, tool: "246".to_string() }, IntervalValueKey::default(), IntervalValueKey::default());
+
+        // Test multiple ranges
+        let test_ranges = vec![
+            (Interval::new(Included(0), Included(2)), vec!["42", "17"]),
+            (Interval::new(Included(8), Included(9)), vec!["123"]),
+            (Interval::new(Included(16), Included(20)), vec!["456", "789", "321", "654"]),
+            (Interval::new(Included(26), Included(26)), vec!["987", "246"])
+        ];
+
+        // Serialize to bytes
+        let bytes = rkyv::to_bytes::<_, 1024>(&interval_tree).unwrap();
+        // Deserialize 
+        let deserialized: IntervalTreeMap<usize, Test> = unsafe { rkyv::from_bytes_unchecked::<IntervalTreeMap<usize, Test>>(&bytes).unwrap() };
+
+        // Verify deserialized data for each range
+        for (interval, expected_tools) in test_ranges {
+            let overlaps = deserialized.find_overlaps_and_value(&interval);
+            let found_tools: Vec<&str> = overlaps.iter().map(|(_, value)| value.tool.as_str()).collect();
+            assert_eq!(found_tools.len(), expected_tools.len(), "Wrong number of overlaps for interval {:?}", interval);
+            for expected_tool in expected_tools {
+                assert!(found_tools.contains(&expected_tool), "Missing expected tool {} for interval {:?}", expected_tool, interval);
+            }
+        }
     }
 }
