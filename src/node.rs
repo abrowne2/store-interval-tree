@@ -67,6 +67,10 @@ impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
         self.value.as_mut().unwrap()
     }
 
+    pub fn option_value_mut(&mut self) -> Option<&mut Arc<V>> {
+        self.value.as_mut()
+    }
+
     /// Updates the set of identifiers in this node's subtree by combining:
     /// 1. This node's identifier
     /// 2. All identifiers from the left subtree
