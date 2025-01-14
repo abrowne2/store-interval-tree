@@ -908,6 +908,34 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
         }
     }
 
+    /// Returns a mutable reference to the kth smallest interval and its value
+    ///
+    /// # Arguments
+    /// * `k`: the order statistic
+    ///
+    /// # Panics
+    /// * panics if k is not in range: 0 <= k <= size - 1
+    pub fn select_with_value(&mut self, k: usize) -> Option<(&Interval<T>, &V)> {
+        assert!(k <= self.size(), "K must be in range 0 <= k <= size - 1");
+        IntervalTreeMap::_select_with_value(&mut self.root, k)
+    }
+
+    fn _select_with_value<'a>(node: &'a mut Option<Box<Node<T, V>>>, k: usize) -> Option<(&'a Interval<T>, &'a V)> {
+        if node.is_none() {
+            return None;
+        }
+        let node_ref = node.as_mut().unwrap();
+
+        let t = Node::size(&node_ref.left_child);
+        if t > k {
+            IntervalTreeMap::_select_with_value(&mut node_ref.left_child, k)
+        } else if t < k {
+            IntervalTreeMap::_select_with_value(&mut node_ref.right_child, k - t - 1)
+        } else {
+            return Some((node_ref.interval(), node_ref.value()));
+        }
+    }
+
     /// Returns minimum interval in the tree
     #[must_use]
     pub fn min(&self) -> Option<Interval<T>> {
