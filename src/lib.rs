@@ -891,12 +891,12 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
     /// assert!(format!("{}", interval_tree.select(3).unwrap()) == String::from("(8,9]"));
     /// ```
     #[must_use]
-    pub fn select(&self, k: usize) -> Option<Interval<T>> {
+    pub fn select(&self, k: usize) -> Option<&Interval<T>> {
         assert!(k <= self.size(), "K must be in range 0 <= k <= size - 1");
         IntervalTreeMap::_select(&self.root, k)
     }
 
-    fn _select(node: &Option<Box<Node<T, V>>>, k: usize) -> Option<Interval<T>> {
+    fn _select(node: &Option<Box<Node<T, V>>>, k: usize) -> Option<&Interval<T>> {
         if node.is_none() {
             return None;
         }
@@ -908,7 +908,7 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
         } else if t < k {
             IntervalTreeMap::_select(&node_ref.right_child, k - t - 1)
         } else {
-            return Some(node_ref.interval().duplicate());
+            return Some(node_ref.interval());
         }
     }
 
@@ -919,12 +919,12 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
     ///
     /// # Panics
     /// * panics if k is not in range: 0 <= k <= size - 1
-    pub fn select_with_value(&mut self, k: usize) -> Option<&mut Arc<V>> {
+    pub fn select_with_value(&mut self, k: usize) -> Option<(&Interval<T>, &mut Arc<V>)> {
         assert!(k <= self.size(), "K must be in range 0 <= k <= size - 1");
         IntervalTreeMap::_select_with_value(&mut self.root, k)
     }
 
-    fn _select_with_value<'a>(node: &'a mut Option<Box<Node<T, V>>>, k: usize) -> Option<&'a mut Arc<V>> {
+    fn _select_with_value<'a>(node: &'a mut Option<Box<Node<T, V>>>, k: usize) -> Option<(&'a Interval<T>, &'a mut Arc<V>)> {
         if node.is_none() {
             return None;
         }
@@ -937,19 +937,19 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
             let right_result = IntervalTreeMap::_select_with_value(&mut node_ref.right_child, k - t - 1);
             right_result
         } else {
-            node_ref.option_value_mut()
+            Some((node_ref.interval(), node_ref.option_value_mut()))
         }
     }
 
     /// Returns minimum interval in the tree
     #[must_use]
-    pub fn min(&self) -> Option<Interval<T>> {
+    pub fn min(&self) -> Option<&Interval<T>> {
         self.select(0)
     }
 
     /// Returns maximum interval in the tree
     #[must_use]
-    pub fn max(&self) -> Option<Interval<T>> {
+    pub fn max(&self) -> Option<&Interval<T>> {
         self.select(self.size() - 1)
     }
 
