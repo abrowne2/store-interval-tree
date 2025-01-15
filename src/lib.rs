@@ -919,14 +919,14 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
     ///
     /// # Panics
     /// * panics if k is not in range: 0 <= k <= size - 1
-    pub fn select_with_value(&mut self, k: usize) -> Option<(&Interval<T>, &mut Arc<V>)> {
+    pub fn select_with_value(&mut self, k: usize) -> (Option<&Interval<T>>, Option<&mut Arc<V>>) {
         assert!(k <= self.size(), "K must be in range 0 <= k <= size - 1");
         IntervalTreeMap::_select_with_value(&mut self.root, k)
     }
 
-    fn _select_with_value<'a>(node: &'a mut Option<Box<Node<T, V>>>, k: usize) -> Option<(&'a Interval<T>, &'a mut Arc<V>)> {
+    fn _select_with_value<'a>(node: &'a mut Option<Box<Node<T, V>>>, k: usize) -> (Option<&'a Interval<T>>, Option<&'a mut Arc<V>>) {
         if node.is_none() {
-            return None;
+            return (None, None);
         }
         let node_ref = node.as_mut().unwrap();
 
@@ -937,7 +937,7 @@ V: rkyv::Archive + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<Ali
             let right_result = IntervalTreeMap::_select_with_value(&mut node_ref.right_child, k - t - 1);
             right_result
         } else {
-            Some((node_ref.interval(), node_ref.option_value_mut()))
+            node_ref.option_value_mut_with_interval()
         }
     }
 
