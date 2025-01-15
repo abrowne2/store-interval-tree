@@ -71,8 +71,8 @@ impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
         self.value.as_mut()
     }
 
-    pub fn option_value_mut_with_interval(&mut self) -> (Option<&Interval<T>>, Option<&mut Arc<V>>) {
-        (self.interval.as_ref(), self.value.as_mut())
+    pub fn option_value_mut_with_interval_and_key(&mut self) -> (Option<&Interval<T>>, Option<&mut Arc<V>>, Option<&IntervalValueKey>) {
+        (self.interval.as_ref(), self.value.as_mut(), Some(&self.value_key))
     }
 
     /// Updates the set of identifiers in this node's subtree by combining:
