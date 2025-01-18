@@ -1196,6 +1196,40 @@ impl<
 
         self.rank(high_bound) - self.rank(low_bound) + 1
     }
+
+    /// Returns an iterator over all intervals and values in the tree in-order
+    /// 
+    /// # Examples
+    /// ```
+    /// use store_interval_tree::IntervalTreeMap;
+    /// use store_interval_tree::Interval;
+    /// use std::ops::Bound::*;
+    /// 
+    /// let mut tree = IntervalTreeMap::<usize, String>::new();
+    /// tree.insert(
+    ///     Interval::new(Included(1), Included(3)), 
+    ///     "first".to_string(),
+    ///     "id1".into(),
+    ///     "val1".into()
+    /// );
+    /// tree.insert(
+    ///     Interval::new(Included(4), Included(6)), 
+    ///     "second".to_string(),
+    ///     "id2".into(),
+    ///     "val2".into()
+    /// );
+    /// 
+    /// for entry in tree.iter() {
+    ///     println!("Interval: {}, Value: {}", entry.interval(), entry.value());
+    /// }
+    /// ```
+    pub fn iter(&self) -> iterators::InOrderIterator<T, V> {
+        let mut nodes = Vec::new();
+        if let Some(root) = &self.root {
+            nodes.push(root.as_ref());
+        }
+        iterators::InOrderIterator { nodes }
+    }
 }
 
 impl<'a, T, V> Debug for IntervalTreeMap<T, V>
