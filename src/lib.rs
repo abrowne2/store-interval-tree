@@ -196,6 +196,7 @@ impl<V: PartialEq> PartialEq for SerializableRwLock<V> {
     Deserialize,
     Clone,
     Serialize,
+    PartialEq,
     rkyv::Archive,
     rkyv::Deserialize,
     rkyv::Serialize,
