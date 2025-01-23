@@ -1,22 +1,19 @@
 use std::{sync::Arc, vec::Vec};
 use core::{cmp::Ord, fmt::Debug};
-
-use crate::{interval::Interval, node::Node};
+use crate::{interval::Interval, node::Node, SerializableRwLock};
 
 /// A `find` query on the interval tree does not directly return references to the nodes in the tree, but
 /// wraps the fields `interval` and `data` in an `Entry`.
-#[derive(PartialEq, Eq, Debug)]
-#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
-#[archive(check_bytes)]
+#[derive(PartialEq, Debug)]
 pub struct Entry<'a, T: Ord, V> {
-    value: &'a V,
+    value: &'a SerializableRwLock<V>,
     interval: &'a Interval<T>,
 }
 
 impl<'a, T: Ord + 'a, V: 'a> Entry<'a, T, V> {
     /// Get a reference to the data for this entry
     #[must_use]
-    pub fn value(&self) -> &'a V {
+    pub fn value(&self) -> &'a SerializableRwLock<V> {
         self.value
     }
 
@@ -72,17 +69,15 @@ impl<'v, 'i, T: Ord + rkyv::Archive, V: rkyv::Archive> Iterator for IntervalTree
 /// A `find_mut` query on the interval tree does not directly return references to the nodes in the tree, but
 /// wraps the fields `interval` and `data` in an `EntryMut`. Only the data part can be mutably accessed
 /// using the `data` method
-#[derive(PartialEq, Eq, Debug)]
-#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
-#[archive(check_bytes)]
+#[derive(PartialEq, Debug)]
 pub struct EntryMut<'a, T: Ord, V> {
-    value: &'a mut V,
+    value: &'a mut SerializableRwLock<V>,
     interval: &'a Interval<T>,
 }
 
 impl<'a, T: Ord + 'a, V: 'a> EntryMut<'a, T, V> {
     /// Get a mutable reference to the data for this entry
-    pub fn value(&'a mut self) -> &'a mut V {
+    pub fn value(&'a mut self) -> &'a mut SerializableRwLock<V> {
         self.value
     }
 

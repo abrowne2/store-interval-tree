@@ -5,18 +5,19 @@ use core::{
 };
 use crate::range::Bound::{self, Excluded, Included, Unbounded};
 use crate::IntervalValueKey;
+use crate::SerializableRwLock;
 use rkyv::*;
 use crate::interval::Interval;
 
-#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, PartialEq, Clone, serde::Serialize, serde::Deserialize)]
 #[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 #[archive(check_bytes)]
-#[archive(bound(serialize = "__S: rkyv::ser::Serializer"))]
+#[archive(bound(serialize = "T: rkyv::Serialize<__S>, V: rkyv::Serialize<__S>, __S: rkyv::ser::Serializer + rkyv::ser::SharedSerializeRegistry"))]
 #[archive(bound(deserialize = "T: rkyv::Archive, V: rkyv::Archive, <T as rkyv::Archive>::Archived: rkyv::Deserialize<T, __D>, <V as rkyv::Archive>::Archived: rkyv::Deserialize<V, __D>, __D: rkyv::de::SharedDeserializeRegistry"))]
 pub(crate) struct Node<T: Ord + rkyv::Archive, V: rkyv::Archive> {
 
     pub interval: Option<Interval<T>>,
-    pub value: Option<Arc<V>>,
+    pub value: Option<Arc<SerializableRwLock<V>>>,
     pub identifier: Option<IntervalValueKey>,
     pub max: Option<Arc<Bound<T>>>,
     pub height: usize,
@@ -35,7 +36,7 @@ pub(crate) struct Node<T: Ord + rkyv::Archive, V: rkyv::Archive> {
 impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
     pub fn init(
         interval: Interval<T>,
-        value: Arc<V>,
+        value: Arc<SerializableRwLock<V>>,
         max: Arc<Bound<T>>,
         identifier: IntervalValueKey,
         height: usize,
@@ -59,19 +60,19 @@ impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
         }
     }
 
-    pub fn value(&self) -> &Arc<V> {
+    pub fn value(&self) -> &Arc<SerializableRwLock<V>> {
         self.value.as_ref().unwrap()
     }
 
-    pub fn value_mut(&mut self) -> &mut Arc<V> {
+    pub fn value_mut(&mut self) -> &mut Arc<SerializableRwLock<V>> {
         self.value.as_mut().unwrap()
     }
 
-    pub fn option_value_mut(&mut self) -> Option<&mut Arc<V>> {
+    pub fn option_value_mut(&mut self) -> Option<&mut Arc<SerializableRwLock<V>>> {
         self.value.as_mut()
     }
 
-    pub fn option_value_mut_with_interval_and_key(&mut self) -> (Option<&Interval<T>>, Option<&mut Arc<V>>, Option<&IntervalValueKey>) {
+    pub fn option_value_mut_with_interval_and_key(&mut self) -> (Option<&Interval<T>>, Option<&mut Arc<SerializableRwLock<V>>>, Option<&IntervalValueKey>) {
         (self.interval.as_ref(), self.value.as_mut(), Some(&self.value_key))
     }
 
@@ -109,7 +110,7 @@ impl<T: Ord + rkyv::Archive, V: rkyv::Archive> Node<T, V> {
     //    self.value.as_mut().unwrap()
     //}
 
-    pub fn get_value(&mut self) -> Arc<V> {
+    pub fn get_value(&mut self) -> Arc<SerializableRwLock<V>> {
         self.value.take().unwrap()
     }
 

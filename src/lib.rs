@@ -19,6 +19,7 @@
 use core::cmp::Ord;
 use core::fmt::Debug;
 use std::collections::HashMap;
+use std::sync::RwLock;
 use std::{boxed::Box, sync::Arc, vec::Vec};
 mod interval;
 pub mod range;
@@ -64,6 +65,78 @@ impl IntervalValueKey {
 impl std::fmt::Display for IntervalValueKey {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[derive(rkyv::Archive, rkyv::Deserialize)]
+pub struct SerializableRwLock<V: Sized> {
+    #[with(rkyv::with::Lock)]
+    inner: RwLock<V>,
+}
+
+impl<V: Sized, S> rkyv::Serialize<S> for SerializableRwLock<V>
+where
+    V: rkyv::Serialize<S> + 'static,
+    S: rkyv::ser::Serializer + rkyv::ser::SharedSerializeRegistry + Sized,
+{
+    fn serialize(&self, serializer: &mut S) -> Result<SerializableRwLockResolver<V>, <S as Fallible>::Error> {
+        let guard = self.inner.read().unwrap();
+        let value = &*guard;
+        Ok(SerializableRwLockResolver {
+            inner: value.serialize(serializer)?
+        })
+    }
+}
+
+impl<V: Sized> SerializableRwLock<V> {
+    pub fn new(value: V) -> Self {
+        Self {
+            inner: RwLock::new(value)
+        }
+    }
+
+    pub fn write(&self) -> Result<std::sync::RwLockWriteGuard<'_, V>, std::sync::PoisonError<std::sync::RwLockWriteGuard<'_, V>>> {
+        self.inner.write()
+    }
+
+    pub fn read(&self) -> Result<std::sync::RwLockReadGuard<'_, V>, std::sync::PoisonError<std::sync::RwLockReadGuard<'_, V>>> {
+        self.inner.read()
+    }
+
+    pub fn get_inner(&self) -> Option<V> 
+    where
+        V: Clone,
+    {
+        self.inner.read().ok().map(|guard| (*guard).clone())
+    }
+
+    pub fn get_value(&self) -> Result<V, std::sync::PoisonError<std::sync::RwLockReadGuard<'_, V>>>
+    where
+        V: Clone,
+    {
+        self.inner.read().map(|guard| (*guard).clone())
+    }
+}
+
+impl<V: Clone> Clone for SerializableRwLock<V> {
+    fn clone(&self) -> Self {
+        let inner_value = self.inner.read()
+            .map(|guard| (*guard).clone())
+            .unwrap_or_else(|_| panic!("RwLock was poisoned during clone"));
+            
+        Self {
+            inner: RwLock::new(inner_value)
+        }
+    }
+}
+
+impl<V: PartialEq> PartialEq for SerializableRwLock<V> {
+    fn eq(&self, other: &Self) -> bool {
+        match (self.inner.read(), other.inner.read()) {
+            (Ok(self_guard), Ok(other_guard)) => *self_guard == *other_guard,
+            _ => false
+        }
     }
 }
 
@@ -119,18 +192,16 @@ impl std::fmt::Display for IntervalValueKey {
 /// let intervals = interval_tree.intervals_between(&low, &high);
 /// ```
 #[derive(
-    Clone,
     Default,
-    PartialEq,
     Deserialize,
+    Clone,
     Serialize,
     rkyv::Archive,
     rkyv::Deserialize,
     rkyv::Serialize,
 )]
-#[archive(check_bytes)]
 #[archive(bound(
-    serialize = "T: rkyv::Serialize<__S>, V: rkyv::Serialize<__S>, __S: rkyv::ser::Serializer + rkyv::ser::SharedSerializeRegistry"
+    serialize = "T: rkyv::Archive + rkyv::Serialize<__S>, V: rkyv::Archive + rkyv::Serialize<__S>, __S: rkyv::ser::Serializer + rkyv::ser::SharedSerializeRegistry + Sized"
 ))]
 #[archive(bound(
     deserialize = "T: rkyv::Archive, V: rkyv::Archive, <T as rkyv::Archive>::Archived: rkyv::Deserialize<T, __D>, <V as rkyv::Archive>::Archived: rkyv::Deserialize<V, __D>, __D: rkyv::de::SharedDeserializeRegistry"
@@ -142,11 +213,12 @@ pub struct IntervalTreeMap<
         + 'static,
     V: rkyv::Archive
         + rkyv::Serialize<rkyv::ser::serializers::AlignedSerializer<AlignedVec>>
+        + Sized
         + 'static,
 > {
     #[omit_bounds]
     root: Option<Box<Node<T, V>>>,
-    identifier_map: HashMap<IntervalValueKey, Arc<V>>, // Raw pointer to value stored in Node
+    identifier_map: HashMap<IntervalValueKey, Arc<SerializableRwLock<V>>>, // Raw pointer to value stored in Node
 }
 
 impl<
@@ -383,15 +455,15 @@ impl<
         IntervalTreeMap::_find_overlap(&self.root, interval)
     }
 
-    pub fn get_node_value_by_key_mut(&mut self, key: IntervalValueKey) -> Option<&mut Arc<V>> {
+    pub fn get_node_value_by_key_mut(&mut self, key: IntervalValueKey) -> Option<&mut Arc<SerializableRwLock<V>>> {
         self.identifier_map.get_mut(&key)
     }
 
-    pub fn get_node_value_by_key_mut_ref(&mut self, key: &IntervalValueKey) -> Option<&mut Arc<V>> {
+    pub fn get_node_value_by_key_mut_ref(&mut self, key: &IntervalValueKey) -> Option<&mut Arc<SerializableRwLock<V>>> {
         self.identifier_map.get_mut(key)
     }
 
-    pub fn get_node_value_by_key(&self, key: IntervalValueKey) -> Option<&Arc<V>> {
+    pub fn get_node_value_by_key(&self, key: IntervalValueKey) -> Option<&Arc<SerializableRwLock<V>>> {
         self.identifier_map.get(&key)
     }
 
@@ -499,8 +571,8 @@ impl<
     /// # Returns
     /// A vector of tuples containing overlapping intervals and references to their associated values
     #[must_use]
-    pub fn find_overlaps_and_value(&self, interval: &Interval<T>) -> Vec<(Interval<T>, &V)> {
-        let mut overlaps = Vec::<(Interval<T>, &V)>::new();
+    pub fn find_overlaps_and_value(&self, interval: &Interval<T>) -> Vec<(Interval<T>, &Arc<SerializableRwLock<V>>)> {
+        let mut overlaps = Vec::<(Interval<T>, &Arc<SerializableRwLock<V>>)>::new();
         IntervalTreeMap::_find_overlaps_and_value(&self.root, interval, &mut overlaps);
         overlaps
     }
@@ -508,7 +580,7 @@ impl<
     fn _find_overlaps_and_value<'a>(
         node: &'a Option<Box<Node<T, V>>>,
         interval: &Interval<T>,
-        overlaps: &mut Vec<(Interval<T>, &'a V)>,
+        overlaps: &mut Vec<(Interval<T>, &'a Arc<SerializableRwLock<V>>)>,
     ) {
         if let Some(node_ref) = node {
             if Interval::overlaps(node_ref.interval(), interval) {
@@ -532,7 +604,7 @@ impl<
         &self,
         interval: &Interval<T>,
         identifier: &IntervalValueKey,
-    ) -> Option<(Interval<T>, &V)> {
+    ) -> Option<(Interval<T>, &Arc<SerializableRwLock<V>>)> {
         Self::_find_overlap_with_identifier(&self.root, interval, identifier)
     }
 
@@ -540,7 +612,7 @@ impl<
         node: &'a Option<Box<Node<T, V>>>,
         interval: &Interval<T>,
         identifier: &IntervalValueKey,
-    ) -> Option<(Interval<T>, &'a V)> {
+    ) -> Option<(Interval<T>, &'a Arc<SerializableRwLock<V>>)> {
         if node.is_none() {
             return None;
         }
@@ -612,7 +684,7 @@ impl<
     ) {
         let max = interval.get_high();
 
-        let value_with_shared_pointer = Arc::new(value);
+        let value_with_shared_pointer = Arc::new(SerializableRwLock::new(value));
 
         if !self.identifier_map.contains_key(&value_key) {
             self.identifier_map
@@ -632,7 +704,7 @@ impl<
     fn _insert(
         node: Option<Box<Node<T, V>>>,
         interval: Interval<T>,
-        value_with_shared_pointer: Arc<V>,
+        value_with_shared_pointer: Arc<SerializableRwLock<V>>,
         identifier: IntervalValueKey,
         max: Arc<Bound<T>>,
         value_key: IntervalValueKey,
@@ -968,7 +1040,7 @@ impl<
     ///
     /// # Panics
     /// * panics if k is not in range: 0 <= k <= size - 1
-    pub fn select_with_value(&mut self, k: usize) -> (Option<&Interval<T>>, Option<&mut Arc<V>>, Option<&IntervalValueKey>) {
+    pub fn select_with_value(&mut self, k: usize) -> (Option<&Interval<T>>, Option<&mut Arc<SerializableRwLock<V>>>, Option<&IntervalValueKey>) {
         assert!(k <= self.size(), "K must be in range 0 <= k <= size - 1");
         IntervalTreeMap::_select_with_value(&mut self.root, k)
     }
@@ -976,7 +1048,7 @@ impl<
     fn _select_with_value<'a>(
         node: &'a mut Option<Box<Node<T, V>>>,
         k: usize,
-    ) -> (Option<&'a Interval<T>>, Option<&'a mut Arc<V>>, Option<&'a IntervalValueKey>) {
+    ) -> (Option<&'a Interval<T>>, Option<&'a mut Arc<SerializableRwLock<V>>>, Option<&'a IntervalValueKey>) {
         if node.is_none() {
             return (None, None, None);
         }
@@ -2540,7 +2612,7 @@ mod tests {
         // Verify deserialized data
         let iter = deserialized.query(&interval);
         for entry in iter {
-            assert!(entry.value().tool == "123".to_string());
+            assert!(entry.value().read().unwrap().tool == "123".to_string());
         }
     }
 
@@ -2624,8 +2696,8 @@ mod tests {
                 bar: false,
                 tool: "654".to_string(),
             },
-            IntervalValueKey::default(),
-            IntervalValueKey::default(),
+            IntervalValueKey::new("foobar".to_string()),
+            IntervalValueKey::new("foobar".to_string()),
         );
         interval_tree.insert(
             Interval::new(Excluded(25), Included(30)),
@@ -2665,13 +2737,18 @@ mod tests {
         // Deserialize
         let deserialized: IntervalTreeMap<usize, Test> =
             unsafe { rkyv::from_bytes_unchecked::<IntervalTreeMap<usize, Test>>(&bytes).unwrap() };
-
+        
+        // Serialize again
+        let bytes2 = rkyv::to_bytes::<_, 1024>(&deserialized).unwrap();
+        // Deserialize again 
+        let mut deserialized: IntervalTreeMap<usize, Test> =
+            unsafe { rkyv::from_bytes_unchecked::<IntervalTreeMap<usize, Test>>(&bytes2).unwrap() };
         // Verify deserialized data for each range
         for (interval, expected_tools) in test_ranges {
             let overlaps = deserialized.find_overlaps_and_value(&interval);
-            let found_tools: Vec<&str> = overlaps
+            let found_tools: Vec<String> = overlaps
                 .iter()
-                .map(|(_, value)| value.tool.as_str())
+                .map(|(_, value)| value.read().unwrap().tool.clone())
                 .collect();
             assert_eq!(
                 found_tools.len(),
@@ -2681,12 +2758,29 @@ mod tests {
             );
             for expected_tool in expected_tools {
                 assert!(
-                    found_tools.contains(&expected_tool),
+                    found_tools.contains(&expected_tool.to_string()),
                     "Missing expected tool {} for interval {:?}",
                     expected_tool,
                     interval
                 );
             }
         }
+
+        let interval_value_key = IntervalValueKey::new("foobar".to_string());
+        // Get mutable reference and modify the value
+        let node_value = deserialized.get_node_value_by_key_mut(interval_value_key.clone()).unwrap();
+        {
+            let mut write_guard = node_value.write().unwrap();
+            write_guard.tool = "updated_123".to_string();
+            write_guard.bar = true;
+        }
+
+        // Verify the changes
+        let updated_value = deserialized.get_node_value_by_key(interval_value_key.clone()).unwrap();
+        let read_guard = updated_value.read().unwrap();
+        assert_eq!(read_guard.tool, "updated_123");
+        assert!(read_guard.bar);
     }
+
+
 }
