@@ -1299,7 +1299,7 @@ impl<
     pub fn iter(&self) -> iterators::InOrderIterator<T, V> {
         let mut nodes = Vec::new();
         if let Some(root) = &self.root {
-            nodes.push(root.as_ref());
+            nodes.push((root.as_ref(), false));
         }
         iterators::InOrderIterator { nodes }
     }
