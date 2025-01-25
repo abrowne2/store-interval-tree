@@ -133,35 +133,35 @@ impl<'v, 'i, T: Ord + rkyv::Archive, V: rkyv::Archive> Iterator for IntervalTree
 }
 
 /// An `InOrderIterator` iterates over all intervals and values in the tree in-order
-#[derive(Debug)]
-#[derive(rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[derive(Debug, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
 #[archive(check_bytes)]
 pub struct InOrderIterator<'v, T: Ord + rkyv::Archive, V: rkyv::Archive> {
-    pub(crate) nodes: Vec<&'v Node<T, V>>,
+    pub(crate) nodes: Vec<(&'v Node<T, V>, bool)>, // (node, visited)
 }
 
 impl<'v, T: Ord + rkyv::Archive, V: rkyv::Archive> Iterator for InOrderIterator<'v, T, V> {
     type Item = Entry<'v, T, V>;
 
     fn next(&mut self) -> Option<Entry<'v, T, V>> {
-        while let Some(node) = self.nodes.pop() {
-            // If we have a right child, push it
-            if let Some(right) = &node.right_child {
-                self.nodes.push(right);
-            }
+        while let Some((node, visited)) = self.nodes.pop() {
+            if visited {
+                // If we've visited this node before, return it and process right child
+                if let Some(right) = &node.right_child {
+                    self.nodes.push((right.as_ref(), false));
+                }
+                return Some(Entry {
+                    value: node.value(),
+                    interval: node.interval(),
+                });
+            } else {
+                // Push back current node as visited
+                self.nodes.push((node, true));
 
-            // Push left child and current node back
-            if let Some(left) = &node.left_child {
-                self.nodes.push(node);
-                self.nodes.push(left);
-                continue;
+                // Process left subtree first
+                if let Some(left) = &node.left_child {
+                    self.nodes.push((left.as_ref(), false));
+                }
             }
-
-            // No left child, return current node
-            return Some(Entry {
-                value: node.value(),
-                interval: node.interval(),
-            });
         }
         None
     }
