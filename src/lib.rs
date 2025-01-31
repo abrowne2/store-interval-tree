@@ -1303,6 +1303,51 @@ impl<
         }
         iterators::InOrderIterator { nodes }
     }
+
+    /// Returns an iterator over all overlapping intervals in-order
+    /// 
+    /// # Examples
+    /// ```
+    /// use store_interval_tree::IntervalTreeMap;
+    /// use store_interval_tree::Interval;
+    /// use std::ops::Bound::*;
+    /// 
+    /// let mut tree = IntervalTreeMap::<usize, String>::new();
+    /// tree.insert(
+    ///     Interval::new(Included(1), Included(3)), 
+    ///     "first".to_string(),
+    ///     "id1".into(),
+    ///     "val1".into()
+    /// );
+    /// tree.insert(
+    ///     Interval::new(Included(2), Included(4)), 
+    ///     "second".to_string(),
+    ///     "id2".into(),
+    ///     "val2".into()
+    /// );
+    /// tree.insert(
+    ///     Interval::new(Included(5), Included(6)), 
+    ///     "third".to_string(),
+    ///     "id3".into(),
+    ///     "val3".into()
+    /// );
+    /// 
+    /// // Find all intervals that overlap with [2,3] in order
+    /// let query = Interval::new(Included(2), Included(3));
+    /// for entry in tree.iter_overlaps(&query) {
+    ///     println!("Overlapping interval: {}", entry.interval());
+    /// }
+    /// ```
+    pub fn iter_overlaps<'a, 'i>(&'a self, interval: &'i Interval<T>) -> iterators::OverlapsInOrderIterator<'a, 'i, T, V> {
+        let mut nodes = Vec::new();
+        if let Some(root) = &self.root {
+            nodes.push((root.as_ref(), false));
+        }
+        iterators::OverlapsInOrderIterator { 
+            nodes,
+            query_interval: interval,
+        }
+    }
 }
 
 impl<'a, T, V> Debug for IntervalTreeMap<T, V>

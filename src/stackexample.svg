@@ -1,0 +1,104 @@
+<svg viewBox="0 0 900 700" xmlns="http://www.w3.org/2000/svg">
+    <!-- Title -->
+    <text x="450" y="30" text-anchor="middle" font-size="20" font-weight="bold">Collaborative Action Flow</text>
+    
+    <!-- Participants -->
+    <g stroke="black">
+        <!-- Participant boxes -->
+        <rect x="50" y="60" width="100" height="40" fill="#e6f3ff" rx="5"/>
+        <rect x="200" y="60" width="100" height="40" fill="#e6f3ff" rx="5"/>
+        <rect x="350" y="60" width="100" height="40" fill="#e6f3ff" rx="5"/>
+        <rect x="500" y="60" width="100" height="40" fill="#e6f3ff" rx="5"/>
+        <rect x="650" y="60" width="100" height="40" fill="#e6f3ff" rx="5"/>
+        <rect x="800" y="60" width="100" height="40" fill="#e6f3ff" rx="5"/>
+        
+        <!-- Participant labels -->
+        <text x="100" y="85" text-anchor="middle" font-size="14">Client</text>
+        <text x="250" y="85" text-anchor="middle" font-size="14">Collaborative Project</text>
+        <text x="400" y="85" text-anchor="middle" font-size="14">LocalOpQueue</text>
+        <text x="550" y="85" text-anchor="middle" font-size="14">CurrentAction</text>
+        <text x="700" y="85" text-anchor="middle" font-size="14">onAddAction Callback</text>
+        <text x="850" y="85" text-anchor="middle" font-size="14">UndoRedo Machine</text>
+        
+        <!-- Lifelines -->
+        <line x1="100" y1="100" x2="100" y2="650" stroke-dasharray="4"/>
+        <line x1="250" y1="100" x2="250" y2="650" stroke-dasharray="4"/>
+        <line x1="400" y1="100" x2="400" y2="650" stroke-dasharray="4"/>
+        <line x1="550" y1="100" x2="550" y2="650" stroke-dasharray="4"/>
+        <line x1="700" y1="100" x2="700" y2="650" stroke-dasharray="4"/>
+        <line x1="850" y1="100" x2="850" y2="650" stroke-dasharray="4"/>
+    </g>
+
+    <!-- Activation boxes -->
+    <rect x="245" y="150" width="10" height="450" fill="#e6f3ff" stroke="black"/>
+    <rect x="545" y="180" width="10" height="350" fill="#e6f3ff" stroke="black"/>
+    
+    <!-- Messages -->
+    <g stroke="black" marker-end="url(#arrowhead)">
+        <!-- startCurrentAction -->
+        <path d="M 100 150 H 245" fill="none"/>
+        <text x="170" y="145" text-anchor="middle" font-size="12">startCurrentAction("Blade Cut")</text>
+        
+        <!-- Create new action -->
+        <path d="M 255 180 H 545" fill="none"/>
+        <foreignObject x="300" y="140" width="200" height="80">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 12px;">
+                Create new action {<br/>
+                    humanReadableName: "Blade Cut",<br/>
+                    actionType: "blade",<br/>
+                    actionId: uuid(),<br/>
+                    start_lamport_counter: current
+            </div>
+        </foreignObject>
+        
+        <!-- bladeCutClip -->
+        <path d="M 100 280 H 245" fill="none"/>
+        <text x="170" y="275" text-anchor="middle" font-size="12">bladeCutClip()</text>
+        
+        <!-- addOp -->
+        <path d="M 255 310 H 395" fill="none"/>
+        <text x="325" y="305" text-anchor="middle" font-size="12">addOp(BLADE_CUT_OP)</text>
+        
+        <!-- Track op -->
+        <path d="M 400 340 H 545" fill="none" stroke-dasharray="4"/>
+        <text x="470" y="335" text-anchor="middle" font-size="12">Track op in current action</text>
+        
+        <!-- finishCurrentAction -->
+        <path d="M 100 400 H 245" fill="none"/>
+        <text x="170" y="395" text-anchor="middle" font-size="12">finishCurrentAction()</text>
+        
+        <!-- Set end counter -->
+        <path d="M 255 430 H 545" fill="none"/>
+        <text x="400" y="425" text-anchor="middle" font-size="12">Set end_lamport_counter</text>
+        
+        <!-- Complete action -->
+        <path d="M 555 500 H 695" fill="none"/>
+        <text x="625" y="495" text-anchor="middle" font-size="12">Complete action dispatched</text>
+        
+        <!-- Send to UndoRedo -->
+        <path d="M 700 530 H 845" fill="none"/>
+        <foreignObject x="720" y="480" width="200" height="60">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="font-size: 12px;">
+                undoRedoMachine.send({<br/>
+                    type: "ADD_ACTION",<br/>
+                    action: collaborativeAction<br/>
+                })
+            </div>
+        </foreignObject>
+    </g>
+
+    <!-- Notes -->
+    <g>
+        <rect x="350" y="350" width="250" height="60" fill="#fffae6" stroke="black" rx="5"/>
+        <text x="475" y="370" text-anchor="middle" font-size="12">Action now contains:</text>
+        <text x="475" y="385" text-anchor="middle" font-size="12">- start/end counters</text>
+        <text x="475" y="400" text-anchor="middle" font-size="12">- all ops between counters</text>
+    </g>
+
+    <!-- Arrowhead definition -->
+    <defs>
+        <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+            <polygon points="0 0, 10 3.5, 0 7" fill="black"/>
+        </marker>
+    </defs>
+</svg>

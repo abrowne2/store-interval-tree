@@ -166,3 +166,47 @@ impl<'v, T: Ord + rkyv::Archive, V: rkyv::Archive> Iterator for InOrderIterator<
         None
     }
 }
+
+/// An `OverlapsInOrderIterator` iterates over all overlapping intervals in-order
+#[derive(Debug, rkyv::Archive, rkyv::Deserialize, rkyv::Serialize)]
+#[archive(check_bytes)]
+pub struct OverlapsInOrderIterator<'v, 'i, T: Ord + rkyv::Archive, V: rkyv::Archive> {
+    pub(crate) nodes: Vec<(&'v Node<T, V>, bool)>, // (node, visited)
+    pub(crate) query_interval: &'i Interval<T>,
+}
+
+impl<'v, 'i, T: Ord + rkyv::Archive, V: rkyv::Archive> Iterator for OverlapsInOrderIterator<'v, 'i, T, V> {
+    type Item = Entry<'v, T, V>;
+
+    fn next(&mut self) -> Option<Entry<'v, T, V>> {
+        while let Some((node, visited)) = self.nodes.pop() {
+            if visited {
+                // If we've visited this node before, check for overlap and process right child
+                if let Some(right) = &node.right_child {
+                    // Only add right child if it could contain overlaps
+                    if Node::<T, V>::is_ge(&right.get_max(), &self.query_interval.get_low()) {
+                        self.nodes.push((right.as_ref(), false));
+                    }
+                }
+                
+                if Interval::overlaps(node.interval(), self.query_interval) {
+                    return Some(Entry {
+                        value: node.value(),
+                        interval: node.interval(),
+                    });
+                }
+            } else {
+                // Push back current node as visited
+                self.nodes.push((node, true));
+
+                // Process left subtree first if it could contain overlaps
+                if let Some(left) = &node.left_child {
+                    if Node::<T, V>::is_ge(&left.get_max(), &self.query_interval.get_low()) {
+                        self.nodes.push((left.as_ref(), false));
+                    }
+                }
+            }
+        }
+        None
+    }
+}
